@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+package rv.protos;
+
+import "google/protobuf/struct.proto";
+
+message BackendConfig {
+    required string backend_type = 1;
+    optional string pretrained_model = 2;
+    required google.protobuf.Struct config = 3;
+}

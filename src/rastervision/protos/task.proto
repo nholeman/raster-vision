@@ -1,0 +1,31 @@
+syntax = "proto2";
+
+package rv.protos;
+
+import "google/protobuf/struct.proto";
+
+message TaskConfig {
+    message ClassItem {
+        // Eg. car
+        required int32 id = 1;
+        required string name = 2;
+        optional string color = 3;
+    }
+
+    message ObjectDetectionConfig {
+        repeated ClassItem class_items = 1;
+        required int32 chip_size = 2;
+    }
+
+    message ChipClassificationConfig {
+        repeated ClassItem class_items = 1;
+        required int32 chip_size = 2;
+    }
+
+    required string task_type = 1;
+    oneof config_type {
+        ObjectDetectionConfig object_detection_config = 2;
+        ChipClassificationConfig chip_classification_config = 3;
+        google.protobuf.Struct custom_config = 4;
+    }
+}

@@ -1,30 +1,28 @@
 from abc import abstractmethod
 
-from rastervision.core.training_data import TrainingData
-from rastervision.core.predict_package import save_predict_package
+from ..core.training_data import TrainingData
+from ..core.predict_package import save_predict_package
 
-import numpy as np
-
-# TODO: DRY... same keys as in ml_backends/tf_object_detection_aip.py
+# TODO: DRY... same keys as in ml_backends/tf_object_detection_api.py
 TRAIN = 'train'
 VALIDATION = 'validation'
 
 
-class MLTask(object):
+class Task(object):
     """Functionality for a specific machine learning task.
 
     This should be subclassed to add a new task, such as object detection
     """
 
-    def __init__(self, backend, class_map):
+    def __init__(self, backend, config):
         """Construct a new MLTask.
 
         Args:
-            backend: MLBackend
-            class_map: ClassMap
+            backend: Backend
+            config: TaskConfig
         """
         self.backend = backend
-        self.class_map = class_map
+        self.config = config
 
     @abstractmethod
     def get_train_windows(self, scene, options):
@@ -176,29 +174,11 @@ class MLTask(object):
 
             windows = self.get_predict_windows(raster_source.get_extent(),
                                                options)
-
-            def predict_batch(predict_chips, predict_windows):
-                labels = self.backend.predict(
-                    np.array(predict_chips), predict_windows, options)
-                label_store.extend(labels)
-                print('.' * len(predict_chips), end='', flush=True)
-
-            batch_chips, batch_windows = [], []
             for window in windows:
                 chip = raster_source.get_chip(window)
-                if np.any(chip):
-                    batch_chips.append(chip)
-                    batch_windows.append(window)
-
-                # Predict on batch
-                if len(batch_chips) >= options.batch_size:
-                    predict_batch(batch_chips, batch_windows)
-                    batch_chips, batch_windows = [], []
-
-            # Predict on remaining batch
-            if len(batch_chips) > 0:
-                predict_batch(batch_chips, batch_windows)
-
+                labels = self.backend.predict(chip, window, options)
+                label_store.extend(labels)
+                print('.', end='', flush=True)
             print()
 
             labels = self.post_process_predictions(label_store.get_labels(),

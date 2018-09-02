@@ -180,6 +180,15 @@ def file_exists(uri):
         if len(objs) > 0 and objs[0].key == key:
             return True
         return False
+    elif parsed_uri.scheme in ['http', 'https']:
+        try:
+            response = urllib.request.urlopen(uri)
+            if response.getcode() == 200:
+                return int(response.headers['content-length']) > 0
+            else:
+                return  False
+        except urllib.error.URLError:
+            return False
     else:
         return os.path.isfile(uri)
 
@@ -221,7 +230,6 @@ def upload_if_needed(src_path, dst_uri):
             make_dir(dst_uri, use_dirname=True)
             shutil.copyfile(src_path, dst_uri)
 
-
 def file_to_str(file_uri):
     """Download contents of text file into a string.
 
@@ -245,6 +253,9 @@ def file_to_str(file_uri):
                 return file_buffer.getvalue().decode('utf-8')
             except botocore.exceptions.ClientError:
                 raise NotReadableError('Could not read {}'.format(file_uri))
+    elif parsed_uri.scheme in ['http', 'https']:
+        with urllib.request.urlopen(file_uri) as req:
+            return req.read().decode("utf8")
     else:
         if not os.path.isfile(file_uri):
             raise NotReadableError('Could not read {}'.format(file_uri))

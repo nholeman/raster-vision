@@ -40,11 +40,17 @@ class RasterStats():
             std = last(istd(chip_stream(channel), axis=None, ignore_nan=True))
             self.stds.append(std)
 
-    def load(self, stats_uri):
-        stats = json.loads(file_to_str(stats_uri))
-        self.means = stats['means']
-        self.stds = stats['stds']
-
     def save(self, stats_uri):
-        stats = {'means': self.means, 'stds': self.stds}
+        # Ensure lists
+        means = list(self.means)
+        stds = list(self.stds)
+        stats = {'means': means, 'stds': stds}
         str_to_file(json.dumps(stats), stats_uri)
+
+    @staticmethod
+    def load(stats_uri):
+        stats_json = json.loads(file_to_str(stats_uri))
+        stats = RasterStats()
+        stats.means = stats_json['means']
+        stats.stds = stats_json['stds']
+        return stats
