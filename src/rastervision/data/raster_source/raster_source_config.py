@@ -4,6 +4,7 @@ from copy import deepcopy
 import rastervision as rv
 from rastervision.core.config  import (Config, ConfigBuilder)
 from rastervision.data import StatsTransformerConfig
+from rastervision.protos.raster_source2_pb2 import RasterSourceConfig as RasterSourceConfigMsg
 
 class RasterSourceConfig(Config):
     def __init__(self,
@@ -15,11 +16,11 @@ class RasterSourceConfig(Config):
         self.channel_order = channel_order
 
     def to_proto(self):
-        msg = RasterSourceConfigMsg()
-        msg.source_type = self.source_type
-        msg.channel_order = self.channel_order
-        msg.transformers = list(map(lambda c: c.to_proto(),
+        transformers = list(map(lambda c: c.to_proto(),
                                     self.transformers))
+        msg = RasterSourceConfigMsg(source_type=self.source_type,
+                                    channel_order=self.channel_order,
+                                    transformers=transformers)
         return msg
 
     def builder(self):
@@ -51,7 +52,7 @@ class RasterSourceConfig(Config):
 class RasterSourceConfigBuilder(ConfigBuilder):
     def from_proto(self, msg):
         transformers = list(map(lambda m: RasterTransformer.from_proto(m),
-                                msg.raster_transformers))
+                                msg.transformers))
 
         return self.with_channel_order(msg.channel_order) \
                    .with_transformers(transformers)

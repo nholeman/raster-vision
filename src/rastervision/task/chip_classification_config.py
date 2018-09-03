@@ -1,16 +1,18 @@
 from copy import deepcopy
+from typing import (List, Dict, Tuple, Union)
 
 import rastervision as rv
+from rastervision.core.class_map import (ClassMap, ClassItem)
 from .task_config import (TaskConfig, TaskConfigBuilder)
-from .util import (construct_classes, classes_to_class_items)
+from .util import (construct_class_map, classes_to_class_items)
 from ..protos.task_pb2 import TaskConfig as TaskConfigMsg
 
 class ChipClassificationConfig(TaskConfig):
     def __init__(self,
-                 classes={},
+                 class_map,
                  chip_size=300):
         super().__init__(rv.CHIP_CLASSIFICATION)
-        self.classes = classes
+        self.class_map = class_map
         self.chip_size = chip_size
 
     def create_task(self, backend):
@@ -21,7 +23,7 @@ class ChipClassificationConfig(TaskConfig):
 
     def to_proto(self):
         conf = TaskConfigMsg.ChipClassificationConfig(chip_size=self.chip_size,
-                                                      class_items=classes_to_class_items(self.classes))
+                                                      class_items=classes_to_class_items(self.class_map))
         return TaskConfigMsg(task_type=rv.CHIP_CLASSIFICATION,
                              chip_classification_config=conf)
 
@@ -29,18 +31,23 @@ class ChipClassificationConfigBuilder(TaskConfigBuilder):
     def __init__(self, prev=None):
         config = {}
         if prev:
-            config = { "classes": classes,
-                       "chip_size": chip_size }
+            config = { "class_map": prev.class_map,
+                       "chip_size": prev.chip_size }
         super().__init__(ChipClassificationConfig, config)
 
 
     def from_proto(self, msg):
         conf = msg.object_detection_config
         b = ChipClassificationConfigBuilder()
-        return b.with_classes(conf.class_items) \
+        return b.with_classes(list(conf.class_items)) \
                 .with_chip_size(conf.chip_size)
 
-    def with_classes(self, classes):
+    def with_classes(self, classes: Union[ClassMap,
+                                          List[str],
+                                          List[TaskConfigMsg.ClassItem],
+                                          List[ClassItem],
+                                          Dict[str, int],
+                                          Dict[str, Tuple[int, str]]]):
         """Set the classes for this task.
 
             Args:
@@ -50,7 +57,7 @@ class ChipClassificationConfigBuilder(TaskConfigBuilder):
                          where color is a PIL color string.
         """
         b = deepcopy(self)
-        b.config['classes'] = construct_classes(classes)
+        b.config['class_map'] = construct_class_map(classes)
         return b
 
     def with_chip_size(self, chip_size):

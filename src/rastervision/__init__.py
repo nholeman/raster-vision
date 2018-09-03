@@ -2,10 +2,11 @@ from rastervision.protos.model_config_pb2 import ModelConfig
 
 __all__ = ["Experiment"]
 
-from .core import ConfigError
-from .experiment import  *
-from .task import *
-from .backend import *
+from rastervision.core import ConfigError
+from rastervision.command.api import *
+from rastervision.experiment.api import  *
+from rastervision.task.api import *
+from rastervision.backend import *
 from rastervision.data.api import *
 
 # TODO: Is this necessary? numpy does it.

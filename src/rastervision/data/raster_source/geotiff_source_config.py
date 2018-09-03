@@ -20,12 +20,26 @@ class GeoTiffSourceConfig(RasterSourceConfig):
 
     def to_proto(self):
         msg = super().to_proto()
-        msg.geotiff_files = RasterSourceConfigMsg.GeoTiffFiles(uris=self.uris)
+        msg.geotiff_files.CopyFrom(RasterSourceConfigMsg.GeoTiffFiles(uris=self.uris))
         return msg
 
     def create_source(self, tmp_dir):
         transformers = self.create_transformers()
         return GeoTiffSource(self.uris, transformers, tmp_dir, self.channel_order)
+
+    # TODO
+    def traverse(self, command, experiment_config):
+        dependencies = rv.core.CommandIODefinition()
+        dependencies.add_input(command, self.uris)
+        transformers = []
+        for t in self.transformers:
+            d, new_t = t.traverse(command, experiment_config)
+            dependencies = dependencies + d
+            transformers.append(new_t)
+        return dependencies, self.builder() \
+                                 .with_transformers(transformers) \
+                                 .build()
+
 
 class GeoTiffSourceConfigBuilder(RasterSourceConfigBuilder):
     def __init__(self, prev=None):

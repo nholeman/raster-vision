@@ -1,8 +1,5 @@
-# Registry Keys
-
-TASK = "TASK"
-
-OBJECT_DETECTION = "OBJECT_DETECTION"
-CHIP_CLASSIFICATION = "CHIP_CLASSIFICATION"
-
-from .task_config import TaskConfig
+from rastervision.task.object_detection import *
+from rastervision.task.object_detection_config import *
+#from rastervision.task.chip_classification import *
+from rastervision.task.chip_classification_config import *
+from rastervision.task.task import *

@@ -5,7 +5,14 @@ package rv.protos;
 import "google/protobuf/struct.proto";
 
 message BackendConfig {
+    message TrainOptions {
+        optional int32 sync_interval = 5 [default=600];
+        optional bool do_monitoring = 8 [default=true];
+        optional bool replace_model = 9 [default=false];
+    }
+
     required string backend_type = 1;
-    optional string pretrained_model = 2;
-    required google.protobuf.Struct config = 3;
+    required TrainOptions train_options = 2;
+    optional string pretrained_model_uri = 3;
+    required google.protobuf.Struct config = 4;
 }

@@ -3,20 +3,21 @@ from google.protobuf import json_format
 import json
 
 import rastervision as rv
+from rastervision.core.class_map import ClassItem
 from rastervision.protos.task_pb2 import TaskConfig as TaskConfigMsg
 
 class TestObjectDetectionConfig(unittest.TestCase):
     def test_build_task(self):
         classes = ["one", "two"]
-        expected  = { "one" : (0, None),
-                      "two"  : (1, None) }
+        expected  = [ ClassItem(1, "one"),
+                      ClassItem(2, "two") ]
 
         t = rv.TaskConfig.builder(rv.OBJECT_DETECTION) \
                    .with_classes(classes) \
                    .build()
 
         self.assertEqual(t.task_type, rv.OBJECT_DETECTION)
-        self.assertDictEqual(t.classes, expected)
+        self.assertListEqual(t.class_map.get_items(), expected)
 
     def test_build_task_from_proto(self):
         task_config = {
@@ -46,7 +47,7 @@ class TestObjectDetectionConfig(unittest.TestCase):
                                 TaskConfigMsg())
         task = rv.TaskConfig.from_proto(msg)
 
-        self.assertEqual(task.classes['building'][0], 2)
+        self.assertEqual(task.class_map.get_by_name('building').id, 2)
         self.assertEqual(task.chip_size, 500)
 
     def test_create_proto_from_task(self):
@@ -58,9 +59,9 @@ class TestObjectDetectionConfig(unittest.TestCase):
         msg = t.to_proto()
 
         expected_classes = [TaskConfigMsg.ClassItem(name="car",
-                                                    id=0),
+                                                    id=1),
                             TaskConfigMsg.ClassItem(name="boat",
-                                                    id=1)]
+                                                    id=2)]
 
         self.assertEqual(msg.task_type, rv.OBJECT_DETECTION)
         self.assertEqual(msg.object_detection_config.chip_size, 500)

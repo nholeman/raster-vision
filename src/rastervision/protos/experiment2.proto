@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+package rv.protos;
+
+import "rastervision/protos/dataset.proto";
+import "rastervision/protos/task.proto";
+import "rastervision/protos/backend.proto";
+
+message ExperimentConfig2 {
+    required string name = 1;
+    required DatasetConfig dataset = 2;
+    required TaskConfig task = 3;
+    required BackendConfig backend = 4;
+    optional bool debug = 5;
+
+    required string analyze_uri = 7;
+    required string chip_uri = 8;
+    required string train_uri = 9;
+    required string predict_uri = 10;
+    required string eval_uri = 11;
+}

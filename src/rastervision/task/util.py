@@ -1,50 +1,64 @@
-from ..protos.task_pb2 import TaskConfig
+from typing import (List, Dict, Tuple, Union)
 
-def construct_classes(classes):
-    """Construct the cononical set of classes from a number of different
+from rastervision.protos.task_pb2 import TaskConfig
+from rastervision.core.class_map import (ClassItem, ClassMap)
+
+# TODO: Unit test
+
+def construct_class_map(classes: Union[ClassMap,
+                                     List[str],
+                                     List[TaskConfig.ClassItem],
+                                     List[ClassItem],
+                                     Dict[str, int],
+                                     Dict[str, Tuple[int, str]]]) -> ClassMap:
+    """Construct ClassMap from a number of different
        representations.
-
-       The cononical class representation is a dict that makes class names
-       to an ID and an optional color string, e.g.:
-       TODO - how to format code in pydocs
-       {
-           "car": (1, Red),
-           "misc": (2, None)
-       }
 
         Args:
             classes: One of the following:
+                     - a ClassMap
                      - a list of class names
-                     - a list of ClassItem protobuf messages
+                     - a list of TaskConfig.ClassItem protobuf messages
+                     - a list of ClassItems
                      - a dict which maps class names to class ids
                      - a dict which maps class names to a tuple of
                        (class_id, color), where color is a PIL color string.
     """
-    result = {}
-    if type(classes) is dict:
+    result = None
+    if type(classes) is ClassMap:
+        result = classes
+    elif type(classes) is dict:
+        item_list = []
         if not len(classes.items()) == 0:
-            if type(classes.items()[0]) is tuple:
+            if type(list(classes.items())[0]) is tuple:
                 # This dict already has colors mapped to class ids
-                result = classes
+                for name, (class_id, color) in classes.items():
+                   item_list.append(ClassItem(class_id, name, color))
             else:
                 # Map items to empty colors
-                for k, v in classes:
-                    result[k] = (v, "")
-    else:
+                for name, class_id in classes.items():
+                   item_list.append(ClassItem(class_id, name))
+        result = ClassMap(item_list)
+    elif type(classes) is list:
+        item_list = []
         if not len(classes) == 0:
             if type(classes[0]) is TaskConfig.ClassItem:
-                for item in  classes:
-                    result[item.name] = (item.id, item.color)
-            else:
+                for item in classes:
+                    item_list.append(ClassItem(item.id, item.name, item.color))
+            elif type(classes[0]) is str:
                 for i, name in enumerate(classes):
-                    result[name] = (i, None)
+                    item_list.append(ClassItem(i + 1, name))
+            else:
+                item_list = classes
+        result = ClassMap(item_list)
+    else:
+         raise Exception("Cannot convert type {} to ClassMap".format(type(classes)))
 
     return result
 
-def classes_to_class_items(classes):
-    """Transform the cononcal representation of classes into
-       a list of ClassItem protobuf messages
+def classes_to_class_items(class_map):
+    """Transform a ClassMap into
+       a list of TaskConfig.ClassItem protobuf messages
     """
-
-    return [TaskConfig.ClassItem(name=name, id=class_id, color=color)
-            for name, (class_id, color) in classes.items()]
+    return [TaskConfig.ClassItem(name=item.name, id=item.id, color=item.color)
+            for item in class_map.get_items()]

@@ -2,19 +2,19 @@ class Scene():
     """The raster data and labels associated with an area of interest."""
 
     def __init__(self,
-                 id=None,
-                 raster_source=None,
-                 ground_truth_label_store=None,
+                 scene_id,
+                 raster_source,
+                 ground_truth_label_source=None,
                  prediction_label_store=None):
         """Construct a new Scene.
 
         Args:
-            id: optional string
-            raster_source: optional RasterSource
-            ground_truth_label_store: optional LabelStore
+            scene_id: ID for this scene
+            raster_source: RasterSource for this scene
+            ground_truth_label_store: optional LabelSource
             prediction_label_store: optional LabelStore
         """
-        self.id = id
+        self.scene_id = scene_id
         self.raster_source = raster_source
         self.ground_truth_label_store = ground_truth_label_store
         self.prediction_label_store = prediction_label_store

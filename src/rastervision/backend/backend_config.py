@@ -8,18 +8,29 @@ from rastervision.core import (Config, ConfigBuilder)
 from rastervision.utils.files import file_exists
 
 class BackendConfig(Config):
+    class TrainOptions:
+        def __init__(self,
+                     sync_interval=600,
+                     do_monitoring=True,
+                     replace_model=False):
+            self.sync_interval = sync_interval
+            self.do_monitoring = do_monitoring
+            self.replace_model = replace_model
+
     def __init__(self,
                  backend_type,
-                 pretrained_model_uri=None):
+                 pretrained_model_uri=None,
+                 train_options=TrainOptions()):
         self.backend_type = backend_type
         self.pretrained_model_uri = pretrained_model_uri
+        self.train_options = train_options
 
     @abstractmethod
-    def create_backend(self, backend):
+    def create_backend(self, task):
         """Create the Backend that this configuration represents
 
            Args:
-              backend: The backend to be used by the task.
+              task: The task to be accomplised by this backend.
         """
         pass
 
@@ -36,7 +47,9 @@ class BackendConfig(Config):
                            .build()
 
 class BackendConfigBuilder(ConfigBuilder):
-    def __init__(self, backend_type, config_class, config={}):
+    def __init__(self, backend_type, config_class, config={}, prev=None):
+        if prev:
+            config['train_options'] = prev.train_options
         super().__init__(config_class, config)
         self.task = None
         self.backend_type = backend_type
@@ -53,6 +66,13 @@ class BackendConfigBuilder(ConfigBuilder):
            to this task
         """
         pass
+
+    def from_proto(self, msg):
+        return self.with_train_options(
+            sync_interval=msg.train_options.sync_interval,
+            do_monitoring=msg.train_options.do_monitoring,
+            replace_model=msg.train_options.replace_model)
+
 
     def with_task(self, task):
         """Sets the backend up for a specific task type, e.g. rv.OBJECT_DETECTION.
@@ -72,6 +92,27 @@ class BackendConfigBuilder(ConfigBuilder):
         """
         b = deepcopy(self)
         b.config['pretrained_model_uri'] = uri
+        return b
+
+    def with_train_options(self,
+                           sync_interval=600,
+                           do_monitoring=True,
+                           replace_model=False):
+        """Sets the train options for this backend.
+
+           Args:
+              sync_interval: How often to sync output of training to the cloud (in seconds).
+
+              do_monitoring: Run process to monitor training (eg. Tensorboard)
+
+              replace_model: Replace the model checkpoint if exists.
+                             If false, this will continue training from checkpoing if exists,
+                             if the backend allows for this.
+        """
+        b = deepcopy(self)
+        b.config['train_options'] = BackendConfig.TrainOptions(sync_interval,
+                                                               do_monitoring,
+                                                               replace_model)
         return b
 
     # TODO: Allow client configuration of model defaults.

@@ -10,6 +10,8 @@ from rastervision.utils.misc import save_img
 
 from tests import data_file_path
 
+# TODO: Test Proto methods
+
 class TestGeoTiffSource(unittest.TestCase):
     def test_gets_raw_chip(self):
         img_path = data_file_path("small-rgb-tile.tif")
@@ -46,5 +48,5 @@ class TestGeoTiffSource(unittest.TestCase):
                                       .with_stats_transformer() \
                                       .build()
 
-        self.assertEquals(len(config.transformers), 1)
+        self.assertEqual(len(config.transformers), 1)
         self.assertIsInstance(config.transformers[0], rv.data.StatsTransformerConfig)

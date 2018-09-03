@@ -221,8 +221,8 @@ def upload_if_needed(src_path, dst_uri):
                 s3 = boto3.client('s3')
                 s3.upload_file(src_path, parsed_uri.netloc,
                                parsed_uri.path[1:])
-            except Exception:
-                raise NotWritableError('Could not write {}'.format(dst_uri))
+            except Exception as e:
+                raise NotWritableError('Could not write {}'.format(dst_uri)) from e
         else:
             sync_dir(src_path, dst_uri, delete=True)
     else:
@@ -251,8 +251,8 @@ def file_to_str(file_uri):
                 s3.download_fileobj(parsed_uri.netloc, parsed_uri.path[1:],
                                     file_buffer)
                 return file_buffer.getvalue().decode('utf-8')
-            except botocore.exceptions.ClientError:
-                raise NotReadableError('Could not read {}'.format(file_uri))
+            except botocore.exceptions.ClientError as e:
+                raise NotReadableError('Could not read {}'.format(file_uri)) from e
     elif parsed_uri.scheme in ['http', 'https']:
         with urllib.request.urlopen(file_uri) as req:
             return req.read().decode("utf8")
@@ -281,8 +281,8 @@ def str_to_file(content_str, file_uri):
             try:
                 s3 = boto3.client('s3')
                 s3.upload_fileobj(str_buffer, bucket, key)
-            except Exception:
-                raise NotWritableError('Could not write {}'.format(file_uri))
+            except Exception as e:
+                raise NotWritableError('Could not write {}'.format(file_uri)) from e
     else:
         make_dir(file_uri, use_dirname=True)
         with open(file_uri, 'w') as content_file:
@@ -306,10 +306,10 @@ def load_json_config(uri, message):
     """
     try:
         return json_format.Parse(file_to_str(uri), message)
-    except json_format.ParseError:
+    except json_format.ParseError as e:
         error_msg = ('Problem parsing protobuf file {}. '.format(uri) +
                      'You might need to run scripts/compile')
-        raise ProtobufParseException(error_msg)
+        raise ProtobufParseException(error_msg) from e
 
 
 def save_json_config(message, uri):

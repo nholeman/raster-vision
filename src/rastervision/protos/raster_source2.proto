@@ -14,16 +14,16 @@ message RasterSourceConfig {
         required string uri = 1;
     }
 
-    required string raster_source_type = 1;
-    repeated RasterTransformerConfig raster_transformers = 2;
+    required string source_type = 1;
+    repeated RasterTransformerConfig transformers = 2;
     // The channel indices and order to use when extracting chips from a
     // RasterSource. For instance, this should be an array of length 3 to
     // generate RGB chips.
-    repeated int32 channel_order = 2;
+    repeated int32 channel_order = 3;
 
     oneof raster_source_config {
-        GeoTiffFiles geotiff_files = 3;
-        ImageFile image_file = 4;
-        google.protobuf.Struct custom_config = 5;
+        GeoTiffFiles geotiff_files = 4;
+        ImageFile image_file = 5;
+        google.protobuf.Struct custom_config = 6;
     }
 }

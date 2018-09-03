@@ -70,8 +70,7 @@ def make_neg_windows(raster_source, label_store, chip_size, nb_windows,
 
     return neg_windows
 
-
-class ObjectDetection(MLTask):
+class ObjectDetection(Task):
     def get_train_windows(self, scene, options):
         raster_source = scene.raster_source
         label_store = scene.ground_truth_label_store

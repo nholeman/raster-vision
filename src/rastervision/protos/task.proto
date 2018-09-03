@@ -13,8 +13,22 @@ message TaskConfig {
     }
 
     message ObjectDetectionConfig {
+        message ChipOptions {
+            required float neg_ratio = 1;
+            optional float ioa_thresh = 2 [default=0.8];
+            optional string window_method = 3 [default="chip"];
+            optional float label_buffer = 4 [default=0.];
+        }
+
+        message PredictOptions {
+            optional float merge_thresh = 1 [default=0.5];
+            optional float score_thresh = 2 [default=0.5];
+        }
+
         repeated ClassItem class_items = 1;
         required int32 chip_size = 2;
+        required ChipOptions chip_options = 3;
+        required PredictOptions predict_options = 4;
     }
 
     message ChipClassificationConfig {

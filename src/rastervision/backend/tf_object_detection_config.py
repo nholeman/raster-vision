@@ -11,12 +11,15 @@ from ..utils.files import file_to_str
 
 
 class TFObjectDetectionConfig(BackendConfig):
-    def __init__(self, backend_config, pretrained_model_uri=None):
-        super().__init__(rv.TF_OBJECT_DETECTION, pretrained_model_uri)
+    def __init__(self,
+                 backend_config,
+                 pretrained_model_uri=None,
+                 train_options=BackendConfig.TrainOptions()):
+        super().__init__(rv.TF_OBJECT_DETECTION, pretrained_model_uri, train_options)
         self.backend_config = backend_config
 
-    def create_backend(self):
-        return TFObjectDetectionBackend(self)
+    def create_backend(self, task):
+        return TFObjectDetectionBackend(self, task)
 
     def builder(self):
         return TFObjectDetectionConfigBuilder(self)
@@ -35,13 +38,13 @@ class TFObjectDetectionConfigBuilder(BackendConfigBuilder):
         config = { }
         if prev:
             config = { "backend_config": prev.backend_config }
-        super().__init__(rv.TF_OBJECT_DETECTION, TFObjectDetectionConfig, config)
+        super().__init__(rv.TF_OBJECT_DETECTION, TFObjectDetectionConfig, config, prev)
         self.config_mods = []
         self.require_task = True
 
     def from_proto(self, msg):
+        b = super().from_proto(msg)
         conf = json_format.MessageToDict(msg.config)
-        b = TFObjectDetectionConfigBuilder()
         # Since this is coming from a serialized message,
         # assume the task has already been set and do not
         # require it during validation.
@@ -53,10 +56,10 @@ class TFObjectDetectionConfigBuilder(BackendConfigBuilder):
     def validate(self):
         super().validate()
         if not self.config.get('backend_config'):
-            raise rv.ConfigError("You must specify a template for the backend"
+            raise rv.ConfigError("You must specify a template for the backend "
                                       "configuration - use 'with_template'.")
         if self.require_task and not self.task:
-            raise rv.ConfigError("You must specify the task this backend"
+            raise rv.ConfigError("You must specify the task this backend "
                                      "is for - use 'with_task'.")
         return True
 
@@ -74,7 +77,7 @@ class TFObjectDetectionConfigBuilder(BackendConfigBuilder):
 
     def _process_task(self):
         return self.with_config({
-            "numClasses": len(self.task.classes.items()),
+            "numClasses": len(self.task.class_map.get_items()),
             "imageResizer": {
                 "fixedShapeResizer": {
                     "height": self.task.chip_size,
