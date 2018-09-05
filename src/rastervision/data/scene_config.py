@@ -56,6 +56,37 @@ class SceneConfig(Config):
     def builder(self):
         return SceneConfigBuilder(self)
 
+    def preprocess_command(self, command_type, experiment_config, context=[]):
+        context = context + [self]
+        io_def = rv.core.CommandIODefinition()
+
+        b = self.builder()
+
+        (new_raster_source,
+         sub_io_def) = self.raster_source.preprocess_command(command_type,
+                                                             experiment_config,
+                                                             context)
+        io_def.merge(sub_io_def)
+        b = b.with_raster_source(new_raster_source)
+
+        if self.label_source:
+            (new_label_source,
+             sub_io_def) = self.label_source.preprocess_command(command_type,
+                                                                experiment_config,
+                                                                context)
+            io_def.merge(sub_io_def)
+            b = b.with_label_source(new_label_source)
+
+        if self.label_store:
+            (new_label_store,
+             sub_io_def) = self.label_store.preprocess_command(command_type,
+                                                               experiment_config,
+                                                               context)
+            io_def.merge(sub_io_def)
+            b = b.with_label_store(new_label_store)
+
+        return (b.build(), io_def)
+
     @staticmethod
     def builder():
         return SceneConfigBuilder()
@@ -153,14 +184,15 @@ class SceneConfigBuilder(ConfigBuilder):
 
         return b
 
-    def with_label_store(self, label_store: Union[str, LabelStoreConfig]):
+    def with_label_store(self, label_store: Union[str, LabelStoreConfig, None]):
         """
         Sets the raster store for this scene.
 
         Args:
            label_store: Can either be a label store configuration, or
-                        a string. If a string, the registry will be queried
+                        a string, or None. If a string, the registry will be queried
                         to grab the default LabelStoreConfig for the string.
+                        If None, then the default for the task from the regsitry will be used.
 
         Note:
            A task must be set with `with_task` before calling this, if calling
@@ -170,13 +202,17 @@ class SceneConfigBuilder(ConfigBuilder):
         b = deepcopy(self)
         if isinstance(label_source, LabelSourceConfig):
             b.config['label_source'] = label_source
+        elif isinstance(label_source, str):
+            if not self.task:
+                raise rv.ConfigError("You must set a task with '.with_task' before "
+                                     "creating a default label store for {}".format(label_source))
+            provider = rv._registry.get_default_label_source_provider(self.task.task_type, label_source)
+            b.config['label_source'] = provider.construct(label_source)
         else:
             if not self.task:
                 raise rv.ConfigError("You must set a task with '.with_task' before "
                                      "creating a default label store for {}".format(label_source))
-            provider = rv._registry.get_default_label_source_provider(self.task.task_type,
-                                                                      label_source)
-            b.config['label_source'] = provider.construct(label_source)
-
+            provider = rv._registry.get_default_label_source_provider(self.task.task_type)
+            b.config['label_source'] = provider.construct()
 
         return b

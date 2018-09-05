@@ -27,6 +27,9 @@ class ChipClassificationConfig(TaskConfig):
         return TaskConfigMsg(task_type=rv.CHIP_CLASSIFICATION,
                              chip_classification_config=conf)
 
+    def preprocess_command(self, command_type, experiment_config):
+        return (self, rv.core.ComandIODefinition())
+
 class ChipClassificationConfigBuilder(TaskConfigBuilder):
     def __init__(self, prev=None):
         config = {}

@@ -48,6 +48,32 @@ class Config(ABC):
         """
         pass
 
+    @abstractmethod
+    def preprocess_command(self,
+                           command_type,
+                           experiment_config,
+                           context=[]):
+        """Returns a copy of this config which may or may not have
+           been modified based on the command needs and the experiment
+           configuration, as well as the IO definitions this configuration
+           contributes to the command.
+
+           Args:
+              command_type: The command type that is currently being preprocessed.
+              experiment_config: The experiment configuration that this configuration
+                                 is a part of.
+              context: Optional list of parent configurations, to allow
+                       for child configurations contained in collections
+                       to understand their context in the experiment configuration.
+
+           Note: While configuration aims to be immutable for client
+                 facing operations, this is an internal operation and
+                 mutating the coniguration is acceptable.
+
+           Returns: (config, io_def)
+        """
+        pass
+
     @staticmethod
     @abstractmethod
     def builder():
@@ -55,6 +81,7 @@ class Config(ABC):
            as its starting point.
         """
         pass
+
 
     @staticmethod
     @abstractmethod

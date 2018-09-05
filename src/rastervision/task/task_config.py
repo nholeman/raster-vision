@@ -29,6 +29,13 @@ class TaskConfig(Config):
                            .from_proto(msg) \
                            .build()
 
+    def preprocess_command(self,
+                           command_type,
+                           experiment_config,
+                           context=[]):
+        # Generally tasks do now have an affect on the IO.
+        return (self, rv.core.CommandIODefinition())
+
 class TaskConfigBuilder(ConfigBuilder):
     """Currently doesn't add anything to ConfigBuilder
     """

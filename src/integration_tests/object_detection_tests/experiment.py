@@ -47,7 +47,7 @@ class ObjectDetectionIntegrationTest(rv.ExperimentSuite):
                                   .build()
 
         experiment = rv.ExperimentConfig.builder() \
-                                        .with_name("object-detection-test") \
+                                        .with_id("object-detection-test") \
                                         .with_root_uri(tmp_dir) \
                                         .with_task(task) \
                                         .with_backend(backend) \

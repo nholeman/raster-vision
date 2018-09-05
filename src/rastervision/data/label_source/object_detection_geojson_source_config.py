@@ -17,8 +17,15 @@ class ObjectDetectionGeoJSONSourceConfig(LabelSourceConfig):
         msg.object_detection_geojson_source.CopyFrom(opts)
         return msg
 
-    def create_source(self, crs_transformer, tmp_dir):
-        return ObjectDetectionGeoJSONSource(self.uri, crs_transformer)
+    def create_source(self, task_config, crs_transformer, tmp_dir):
+        return ObjectDetectionGeoJSONSource(self.uri, crs_transformer, task_config.class_map)
+
+    def preprocess_command(self, command_type, experiment_config):
+        io_def = CommandIODefinition()
+        io_def.add_input(self.uri)
+
+        return (self, io_def)
+
 
 class ObjectDetectionGeoJSONSourceConfigBuilder(LabelSourceConfigBuilder):
     def __init__(self, prev=None):

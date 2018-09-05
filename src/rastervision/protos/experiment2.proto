@@ -7,7 +7,7 @@ import "rastervision/protos/task.proto";
 import "rastervision/protos/backend.proto";
 
 message ExperimentConfig2 {
-    required string name = 1;
+    required string id = 1;
     required DatasetConfig dataset = 2;
     required TaskConfig task = 3;
     required BackendConfig backend = 4;

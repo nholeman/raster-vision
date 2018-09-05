@@ -13,6 +13,11 @@ class DatasetConfig(Config):
         self.validation_scenes = validation_scenes
         self.test_scenes = test_scenes
 
+    def all_scenes(self):
+        return self.train_scenes + \
+            self.validation_sceness + \
+            self.test_scenes
+
     def builder(self):
         return DatasetConfigBuilder(self)
 
@@ -54,6 +59,53 @@ class DatasetConfig(Config):
                                 validation_scenes=val_scenes,
                                 test_scenes=test_scenes)
 
+    def preprocess_command(self, command_type, experiment_config, context=[]):
+        io_def = CommandIODefinition()
+        train_scenes = []
+        for scene in self.train_scenes:
+            (scene_io_def, new_config) = scene.process_experiment_for_command(command_type,
+                                                                              experiment_config,
+                                                                              context)
+            io_def.merge(scene_io_def)
+            train_scenes.append(new_config)
+
+        val_scenes = []
+        for scene in self.validation_scenes:
+            if command_type == rv.PREDICT:
+                # Ensure there is a label store associated with predict and validation scenes.
+                if not scene.label_store:
+                    scene = scene.builder() \
+                                 .with_task(experiment_config.task) \
+                                 .with_label_store() \
+                                 .build()
+                (scene_io_def, new_config) = scene.process_experiment_for_command(command_type,
+                                                                                  experiment_config,
+                                                                                  context)
+                io_def.merge(scene_io_def)
+                val_scenes.append(new_config)
+
+        predict_scenes = []
+        for scene in self.predict_scenes:
+            if command_type == rv.PREDICT:
+                # Ensure there is a label store associated with predict and validation scenes.
+                if not scene.label_store:
+                    scene = scene.builder() \
+                                 .with_task(experiment_config.task) \
+                                 .with_label_store() \
+                                 .build()
+                (scene_io_def, new_config) = scene.process_experiment_for_command(command_type,
+                                                                                  experiment_config,
+                                                                                  context)
+                io_def.merge(scene_io_def)
+                predict_scenes.append(new_config)
+
+        conf = self.builder().with_train_scenes(train_scenes) \
+                             .with_val_scenes(val_scenes) \
+                             .with_predict_scenes(predict_scenes) \
+                             .build()
+
+        return (conf, io_def)
+
     @staticmethod
     def from_proto(msg):
         """Creates a TaskConfig from the specificed protobuf message
@@ -66,7 +118,11 @@ class DatasetConfig(Config):
 
 class DatasetConfigBuilder(ConfigBuilder):
     def __init__(self, prev=None):
-        config = {}
+        config = {
+            'train_scenes': [],
+            'validation_scenes': [],
+            'test_scenes': []
+        }
         if prev:
             config['train_scenes'] = prev.train_scenes
             config['validation_scenes'] = prev.validation_scenes

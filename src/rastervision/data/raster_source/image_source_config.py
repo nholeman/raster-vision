@@ -27,6 +27,13 @@ class ImageSourceConfig(RasterSourceConfig):
         transformers = self.create_transformers()
         return ImageSource(self.uri, transformers, tmp_dir, self.channel_order)
 
+    def preprocess_command(self, command_type, experiment_config, context=[]):
+        (conf, io_def) = super().preprocess_command(command_type, experiment_config)
+        io_def.add_input(self.uri)
+
+        return (conf, io_def)
+
+
 class ImageSourceConfigBuilder(RasterSourceConfigBuilder):
     def __init__(self, prev=None):
         config = {}

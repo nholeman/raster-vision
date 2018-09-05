@@ -2,12 +2,13 @@ import os
 from copy import deepcopy
 
 import rastervision as rv
+from rastervision.core import CommandIODefinition
 from rastervision.core.config import (Config, ConfigBuilder)
 from rastervision.protos.experiment2_pb2 import ExperimentConfig2 as ExperimentConfigMsg
 
 class ExperimentConfig(Config):
     def __init__(self,
-                 name,
+                 id,
                  task,
                  backend,
                  dataset,
@@ -15,33 +16,56 @@ class ExperimentConfig(Config):
                  chip_uri,
                  train_uri,
                  predict_uri,
-                 eval_uri):
-        self.name = name
+                 eval_uri,
+                 analyzers=[]):
+        self.id = id
         self.task = task
         self.backend = backend
         self.dataset = dataset
+        self.analyzers = analyzers
         self.analyze_uri = analyze_uri
         self.chip_uri = chip_uri
         self.train_uri = train_uri
         self.predict_uri = predict_uri
         self.eval_uri = eval_uri
 
-    # def create_commands(self):
-    #     if not self.chip_options:
-    #         self.chip_options = ChipOptionsConfig.builder(self.task) \
-    #                                              .build()
-    #     chip = ChipCommandConfig.builder()  \
-    #                             .with_dataset(self.dataset) \
-    #                             .with_options(self.chip_options) \
-    #                             .build()
-    #     return { rv.command.STATS: stats_config,
-    #              rv.command.CHIP: chip_config,
-    #              rv.command.TRAIN: train_config,
-    #              rv.command.PREDICT: predict_config,
-    #              rv.command.EVAL: eval_config }
+    def preprocess_command(self, command_type, experiment_config):
+        """
+        Returns a tuple (config, dependencies) with the
+        """
+        io_def = CommandIODefinition()
+        new_task, sub_io_def = self.task.preprocess_command(command_type,
+                                                            experiment_config)
+        io_def.merge(sub_io_def)
+        new_backend, sub_io_def = self.backend.preprocess_command(command_type,
+                                                                  experiment_config)
+        io_def.merge(sub_io_def)
+        new_dataset, sub_io_def = self.dataset.preprocess_command(command_type,
+                                                                  experiment_config)
+        io_def.merge(sub_io_def)
+        new_analyzers = []
+        for analyzer in self.analyzers:
+            new_analyzer, sub_io_def = analyzer.preprocess_command(command_type,
+                                                                   experiment_config)
+            io_def.merge(sub_io_def)
+            new_analyzers.append(new_analyzer)
+
+        new_config = self.builder() \
+                         .with_task(new_task) \
+                         .with_backend(new_backend) \
+                         .with_dataset(new_dataset) \
+                         .with_analyzers(new_analyzers) \
+                         .build()
+
+        return (new_config, io_def)
+
+    def make_command_config(self, command_type):
+        return rv._registry.get_command_config_builder(command_type)() \
+                           .with_experiment(self) \
+                           .build()
 
     def to_proto(self):
-        msg = ExperimentConfigMsg(name=self.name,
+        msg = ExperimentConfigMsg(id=self.id,
                                   task=self.task.to_proto(),
                                   backend=self.backend.to_proto(),
                                   dataset=self.dataset.to_proto())
@@ -69,10 +93,11 @@ class ExperimentConfigBuilder(ConfigBuilder):
     def __init__(self, prev = None):
         config = {}
         if prev:
-            config = { "name": prev.name,
+            config = { "id": prev.id,
                        "task": prev.task,
                        "backend": prev.backend,
                        "dataset": prev.dataset,
+                       "analyzers" : prev.analyzers,
                        "analyze_uri": prev.analyze_uri,
                        "chip_uri": prev.chip_uri,
                        "train_uri": prev.train_uri,
@@ -120,19 +145,19 @@ class ExperimentConfigBuilder(ConfigBuilder):
 
     def from_proto(self, msg):
         b = ExperimentConfigBuilder()
-        return b.with_name(msg.name) \
+        return b.with_id(msg.id) \
                 .with_task(rv.TaskConfig.from_proto(msg.task)) \
                 .with_backend(rv.BackendConfig.from_proto(msg.backend)) \
                 .with_dataset(rv.DatasetConfig.from_proto(msg.dataset)) \
                 .with_analyze_uri(msg.analyze_uri) \
-                .with_chip_uri(msg.analyze_uri) \
-                .with_train_uri(msg.analyze_uri) \
-                .with_predict_uri(msg.analyze_uri) \
-                .with_eval_uri(msg.analyze_uri)
+                .with_chip_uri(msg.chip_uri) \
+                .with_train_uri(msg.train_uri) \
+                .with_predict_uri(msg.predict_uri) \
+                .with_eval_uri(msg.eval_uri)
 
-    def with_name(self, name):
+    def with_id(self, id):
         b = deepcopy(self)
-        b.config['name'] = name
+        b.config['id'] = id
         return b
 
     def with_task(self, task):
@@ -149,6 +174,14 @@ class ExperimentConfigBuilder(ConfigBuilder):
         b = deepcopy(self)
         b.config['dataset'] = dataset
         return b
+
+    def with_analyzers(self, analyzers):
+        b = deepcopy(self)
+        b.config['analyzers'] = analyzers
+        return b
+
+    def with_analyzer(self, analyzer):
+        return self.with_analyzers([analyzer])
 
     def with_analyze_uri(self, uri):
         b = deepcopy(self)

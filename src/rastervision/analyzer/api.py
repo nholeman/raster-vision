@@ -1,0 +1,5 @@
+# Registry keys
+
+ANALYZER = "ANALYZER"
+
+STATS_ANALYZER = "STATS_ANALYZER"

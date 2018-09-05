@@ -48,6 +48,20 @@ class RasterSourceConfig(Config):
     def create_transformers(self):
         return list(map(lambda c: c.create_transformer(), self.transformers))
 
+    def preprocess_command(self, command_type, experiment_config):
+        io_def = CommandIODefinition()
+        new_transformers = []
+        for transformer in self.transformers:
+            t, sub_io_def = transformer.preprocess_command(command_type, experiment_config)
+            new_transformers.append(t)
+            io_def.merge(sub_io_def)
+
+        conf = self.builder() \
+                   .with_transformers(new_transformers) \
+                   .build()
+
+        return (conf, io_def)
+
 
 class RasterSourceConfigBuilder(ConfigBuilder):
     def from_proto(self, msg):

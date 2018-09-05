@@ -1,0 +1,15 @@
+# Registry keys
+
+BACKEND = "BACKEND"
+
+## Backend Keys
+
+TF_OBJECT_DETECTION = "TF_OBJECT_DETECTION"
+KERAS_CHIP_CLASSIFICATION = "KERAS_CHIP_CLASSIFICATION"
+
+## Model keys
+
+SSD_MOBILENET_V1_COCO = "SSD_MOBILENET_V1_COCO"
+
+
+from .backend_config import BackendConfig

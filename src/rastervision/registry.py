@@ -10,6 +10,8 @@ from rastervision.data.raster_source.default import (DefaultGeoTiffSourceProvide
                                                      DefaultImageSourceProvider)
 from rastervision.data.label_source.default import (DefaultObjectDetectionGeoJSONSourceProvider,
                                                     DefaultChipClassificationGeoJSONSourceProvider)
+from rastervision.data.label_store.default import (DefaultObjectDetectionGeoJSONStoreProvider,
+                                                   DefaultChipClassificationGeoJSONStoreProvider)
 from rastervision.protos.task_pb2 import TaskConfig
 
 class RegistryError(Exception):
@@ -54,6 +56,23 @@ class Registry:
             DefaultChipClassificationGeoJSONSourceProvider
         ]
 
+        self._internal_label_stores = [
+            DefaultObjectDetectionGeoJSONStoreProvider,
+            DefaultChipClassificationGeoJSONStoreProvider
+        ]
+
+        self.command_config_builders = {
+            rv.ANALYZE: rv.command.AnalyzeCommandConfigBuilder,
+            rv.CHIP: rv.command.ChipCommandConfigBuilder,
+            rv.TRAIN: rv.command.TrainCommandConfigBuilder,
+            rv.PREDICT: rv.command.PredictCommandConfigBuilder,
+            rv.EVAL: rv.command.EvalCommandConfigBuilder
+        }
+
+        self.experiment_runners = {
+            rv.LOCAL_RUNNER: rv.runner.LocalExperimentRunner
+        }
+
     def get_config_builder(self, group, key):
         internal_builder = self._internal_config_builders.get((group, key))
         if internal_builder:
@@ -88,3 +107,34 @@ class Registry:
 
         raise RegistryError("No DefaultLabelSourceProvider "
                             "found for {} and task type {}".format(s, task_type))
+
+    def get_default_label_store_provider(self, task_type, s=None):
+        """
+        Gets the DefaultRasterSourceProvider for a given input string.
+        """
+        for provider in self._internal_label_sources:
+            if s:
+                if provider.handles(task_type, s):
+                    return provider
+            else:
+                if provider.is_default_for(task_type):
+                    return provider
+
+        # TODO: Search plugins
+
+        raise RegistryError("No DefaultLabelStoreProvider "
+                            "found for {} and task type {}".format(s, task_type))
+
+    def get_command_config_builder(self, command_type):
+        builder = self.command_config_builder.get(command_type)
+        if not builder:
+            raise RegistryError("No command found for type {}".format(command_type))
+        return builder
+
+    def get_experiment_runner(self, runner_type):
+        runner = self.experiment_runners.get(runner_type)
+        if not runner:
+            # TODO: Search plugins
+            raise RegistryError("No experiment runner for type {}".format(runner_type))
+
+        return experiment_runner

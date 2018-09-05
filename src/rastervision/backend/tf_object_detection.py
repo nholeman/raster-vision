@@ -534,13 +534,13 @@ def compute_prediction(image_nps, windows, detection_graph, session):
     return labels
 
 
-class TFObjectDetectionBackend(Backend):
-    def __init__(self, backend_config, task):
+class TFObjectDetection(Backend):
+    def __init__(self, backend_config, task_config):
         self.detection_graph = None
         # persist scene training packages for when output_uri is remote
         self.scene_training_packages = []
         self.config = backend_config
-        self.task = task
+        self.task = task_config
 
     def process_scene_data(self, scene, data, class_map, options):
         """Process each scene's training data
@@ -555,7 +555,7 @@ class TFObjectDetectionBackend(Backend):
             the local path to the scene's TFRecord
         """
         # TODO: Check if uint8
-        training_package = TrainingPackage(options.output_uri)
+        training_package = TrainingPackage(self.config.output_uri)
         self.scene_training_packages.append(training_package)
         tf_examples = make_tf_examples(data, class_map)
         # Ensure directory is unique since scene id's could be shared between
@@ -577,7 +577,7 @@ class TFObjectDetectionBackend(Backend):
             class_map: ClassMap
             options: MakeChipsConfig.Options
         """
-        training_package = TrainingPackage(options.output_uri)
+        training_package = TrainingPackage(self.config.training_data_uri)
 
         def _merge_training_results(results, split):
 
@@ -589,7 +589,7 @@ class TFObjectDetectionBackend(Backend):
             merge_tf_records(record_path, results)
 
             # Save debug chips.
-            if options.debug:
+            if self.config.debug:
                 debug_zip_path = training_package.get_local_path(
                     training_package.get_debug_chips_uri(split))
                 with tempfile.TemporaryDirectory() as debug_dir:
@@ -606,49 +606,49 @@ class TFObjectDetectionBackend(Backend):
         tf_class_map = make_tf_class_map(class_map)
         save_tf_class_map(tf_class_map, class_map_path)
 
-        training_package.upload(debug=options.debug)
+        training_package.upload(debug=self.config.debug)
 
         # clear scene training packages
         del self.scene_training_packages[:]
 
     def train(self, class_map, options):
         # Download training data and update config file.
-        training_package = TrainingPackage(options.training_data_uri)
+        training_package = TrainingPackage(self.config.training_data_uri)
         training_package.download_data()
         config_path = training_package.download_config()
 
         with tempfile.TemporaryDirectory() as temp_dir:
             # Setup output dirs.
-            output_dir = get_local_path(options.output_uri, temp_dir)
+            output_dir = get_local_path(self.config.training_output_uri, temp_dir)
             make_dir(output_dir)
 
-            train_py = options.object_detection_options.train_py
-            eval_py = options.object_detection_options.eval_py
-            export_py = options.object_detection_options.export_py
+            train_py = self.config.script_locations.train_uri
+            eval_py = self.config.script_locations.eval_uri
+            export_py = self.config.script_locations.export_uri
 
             # Train model and sync output periodically.
             start_sync(
                 output_dir,
-                options.output_uri,
-                sync_interval=options.sync_interval)
+                self.config.training_output_uri,
+                sync_interval=self.config.train_options.sync_interval)
             train(
                 config_path,
                 output_dir,
                 train_py=train_py,
                 eval_py=eval_py,
-                do_monitoring=options.do_monitoring)
+                do_monitoring=self.config.train_options.do_monitoring)
 
             export_inference_graph(
                 output_dir, config_path, output_dir, export_py=export_py)
 
-            if urlparse(options.output_uri).scheme == 's3':
-                sync_dir(output_dir, options.output_uri, delete=True)
+            if urlparse(self.config.train_output_uri).scheme == 's3':
+                sync_dir(output_dir, self.config.train_output_uri, delete=True)
 
     def predict(self, chips, windows, options):
         # Load and memoize the detection graph and TF session.
         if self.detection_graph is None:
             with tempfile.TemporaryDirectory() as temp_dir:
-                model_path = download_if_needed(options.model_uri, temp_dir)
+                model_path = download_if_needed(self.config.model_uri, temp_dir)
                 self.detection_graph = load_frozen_graph(model_path)
                 self.session = tf.Session(graph=self.detection_graph)
 

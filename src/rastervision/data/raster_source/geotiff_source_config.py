@@ -27,18 +27,12 @@ class GeoTiffSourceConfig(RasterSourceConfig):
         transformers = self.create_transformers()
         return GeoTiffSource(self.uris, transformers, tmp_dir, self.channel_order)
 
-    # TODO
-    def traverse(self, command, experiment_config):
-        dependencies = rv.core.CommandIODefinition()
-        dependencies.add_input(command, self.uris)
-        transformers = []
-        for t in self.transformers:
-            d, new_t = t.traverse(command, experiment_config)
-            dependencies = dependencies + d
-            transformers.append(new_t)
-        return dependencies, self.builder() \
-                                 .with_transformers(transformers) \
-                                 .build()
+    def preprocess_command(self, command_type, experiment_config, context=[]):
+        (conf, io_def) = super().preprocess_command(command_type, experiment_config)
+        for uri in self.uris:
+            io_def.add_input(uri)
+
+        return (conf, io_def)
 
 
 class GeoTiffSourceConfigBuilder(RasterSourceConfigBuilder):

@@ -9,17 +9,47 @@ from ..core.config import set_nested_keys
 from ..protos.backend_pb2 import BackendConfig as BackendConfigMsg
 from ..utils.files import file_to_str
 
-
 class TFObjectDetectionConfig(BackendConfig):
+    # Default location to Tensorflow Object Detection's scripts.
+    DEFAULT_SCRIPT_TRAIN = "/opt/tf-models/object_detection/train.py"
+    DEFAULT_SCRIPT_EVAL = "/opt/tf-models/object_detection/eval.py"
+    DEFAULT_SCRIPT_EXPORT = "/opt/tf-models/object_detection/export_inference_graph.py"
+    CHIP_OUTPUT_FILES = ["label-map.pbtxt",
+                         "train-debug-chips.zip",
+                         "train.record",
+                         "validation-debug-chips.zip",
+                         "validation.record"]
+
+    class ScriptLocations:
+        def __init__(self,
+                     train_uri=DEFAULT_SCRIPT_TRAIN,
+                     eval_uri=DEFAULT_SCRIPT_EVAL,
+                     export_uri=DEFAULT_SCRIPT_EXPORT):
+            self.train_uri = train_uri
+            self.eval_uri = eval_uri
+            self.export_uri = export_uri
+
     def __init__(self,
                  backend_config,
                  pretrained_model_uri=None,
-                 train_options=BackendConfig.TrainOptions()):
+                 train_options=BackendConfig.TrainOptions(),
+                 script_locations=ScriptLocations(),
+                 debug=False,
+                 training_data_uri=None,
+                 training_output_uri=None,
+                 model_uri=None):
         super().__init__(rv.TF_OBJECT_DETECTION, pretrained_model_uri, train_options)
         self.backend_config = backend_config
+        self.pretrained_model_uri = pretrained_model_uri
+        self.train_options = train_options
 
-    def create_backend(self, task):
-        return TFObjectDetectionBackend(self, task)
+        # Internally set  from command preprocessing
+        self.training_data_uri = training_data_uri
+        self.training_output_uri = training_output_uri
+        self.model_uri = model_uri
+
+    def create_backend(self, task_config):
+        return TFObjectDetection(self, task_config)
 
     def builder(self):
         return TFObjectDetectionConfigBuilder(self)
@@ -31,7 +61,31 @@ class TFObjectDetectionConfig(BackendConfig):
             d["pretrained_model_uri"] = self.pretrained_model_uri
         return json_format.ParseDict(d,  BackendConfigMsg())
 
-# TODO: Handle pretrained model config.
+    def preprocess_command(self, command_type, experiment_config, context=[]):
+        conf = self
+        io_def = rv.core.ComandIODefinition()
+        if command_type == rv.CHIP:
+            conf.training_data_uri = experiment_config.chip_uri
+
+            outputs = list(
+                map(lambda x: os.path.join(conf.training_data_uri, x),
+                    CHIP_OUTPUT_FILES))
+            io_def.add_outputs(outputs)
+        if command_type == rv.TRAIN:
+            conf.training_output_uri = experiment_config.chip_uri
+            inputs = list(
+                map(lambda x: os.path.join(experiment_config.chip_uri, x),
+                    CHIP_OUTPUT_FILES))
+            io_def.add_inputs(inputs)
+
+            # TODO: Change? Or make configurable?
+            conf.model_output_uri = os.path.join(conf.training_output_uri, "model")
+            io_def.add_output(conf.model_output_uri)
+        if command_type == rv.PREDICT:
+            io_def.add_input(conf.model_output_uri)
+
+        return (conf, io_def)
+
 
 class TFObjectDetectionConfigBuilder(BackendConfigBuilder):
     def __init__(self, prev=None):
@@ -152,4 +206,21 @@ class TFObjectDetectionConfigBuilder(BackendConfigBuilder):
         """
         b = deepcopy(self)
         b.config_mods.append((config_mod, ignore_missing_keys))
+        return b
+
+    def with_debug(self, debug):
+        """Sets the debug flag for this backend.
+        """
+        b = deepcopy(self)
+        b.config['debug'] = debug
+        return b
+
+    def with_script_uris(self,
+                         train_uri=TFObjectDetectionConfig.DEFAULT_SCRIPT_TRAIN,
+                         eval_uri=TFObjectDetectionConfig.DEFAULT_SCRIPT_EVAL,
+                         export_uri=TFObjectDetectionConfig.DEFAULT_SCRIPT_EXPORT):
+        b = deepcopy(self)
+        b.config['script_locations'] = ScriptLocations(train_uri,
+                                                       eval_uri,
+                                                       export_uri)
         return b

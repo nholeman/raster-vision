@@ -47,12 +47,15 @@ class TestExperimentConfig(unittest.TestCase):
                                   .with_validation_scene(scene) \
                                   .build()
 
+        analyzer = rv.analyzer.StatsAnalyzerConfig()
+
         e = rv.ExperimentConfig.builder() \
-                               .with_name("object-detection-test") \
+                               .with_id("object-detection-test") \
                                .with_root_uri(root_uri) \
                                .with_task(task) \
                                .with_backend(backend) \
                                .with_dataset(dataset) \
+                               .with_analyzer(analyzer) \
                                .with_train_key("model_name") \
                                .build()
 
@@ -62,9 +65,15 @@ class TestExperimentConfig(unittest.TestCase):
         self.assertEqual(e.train_uri, "/some/dummy/root/train/model_name")
         self.assertEqual(e.analyze_uri, "/some/dummy/root/analyze/default")
 
-        self.assertEqual(e.train_uri, e2.train_uri)
         self.assertEqual(e.analyze_uri, e2.analyze_uri)
+        self.assertEqual(e.chip_uri, e2.chip_uri)
+        self.assertEqual(e.train_uri, e2.train_uri)
+        self.assertEqual(e.predict_uri, e2.predict_uri)
+        self.assertEqual(e.eval_uri, e2.eval_uri)
 
+        self.assertEqual(e2.dataset.train_scenes[0].label_source.uri, "/dummy.json")
+        self.assertEqual(e2.dataset.train_scenes[0].raster_source.channel_order,
+                         [0,1,2])
 
 if __name__ == "__main__":
     unittest.main()
