@@ -7,6 +7,7 @@ from rastervision.core.label_store import LabelStore
 from rastervision.label_stores.segmentation_raster_file import (
     SegmentationInputRasterFile)
 from rastervision.raster_sources.image_file import ImageFile
+from rastervision.core.box import Box
 
 
 class SegmentationEvaluation(Evaluation):
@@ -31,6 +32,11 @@ class SegmentationEvaluation(Evaluation):
         # labels and predicted labels.
         gt_extent = ground_truth_label_store.source.get_extent()
         pr_extent = prediction_label_store.source.get_extent()
+        xmin = pr_extent.xmin + 64
+        xmax = pr_extent.xmax - 64
+        ymin = pr_extent.ymin + 64
+        ymax = pr_extent.ymax - 64
+        pr_extent = Box(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
         extent = gt_extent.intersection(pr_extent)
 
         ground_truth = ground_truth_label_store.get_labels(extent)
