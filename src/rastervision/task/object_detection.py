@@ -124,8 +124,8 @@ class ObjectDetection(Task):
             score_thresh=options.object_detection_options.score_thresh,
             merge_thresh=options.object_detection_options.merge_thresh)
 
-    def get_evaluation(self):
-        return ObjectDetectionEvaluation()
+    # def get_evaluation(self):
+    #     return ObjectDetectionEvaluation()
 
     def save_debug_predict_image(self, scene, debug_dir_uri):
         # TODO implement this

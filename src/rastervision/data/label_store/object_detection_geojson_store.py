@@ -1,8 +1,12 @@
 import json
 
+from rastervision.data.label import ObjectDetectionLabels
 from rastervision.data.label_store import LabelStore
 from rastervision.data.label_store.utils import boxes_to_geojson
+from rastervision.data.label_source.utils import (load_label_store_json,
+                                                  geojson_to_object_detection_labels)
 from rastervision.utils.files import str_to_file
+
 
 
 class ObjectDetectionGeoJSONStore(LabelStore):
@@ -36,3 +40,10 @@ class ObjectDetectionGeoJSONStore(LabelStore):
             scores=scores)
         geojson_str = json.dumps(geojson_dict)
         str_to_file(geojson_str, self.uri)
+
+    def load(self):
+        self.labels = ObjectDetectionLabels.make_empty()
+
+        json_dict = load_label_store_json(uri)
+        return geojson_to_object_detection_labels(json_dict,
+                                                  self.crs_transformer)

@@ -1,31 +1,45 @@
 from copy import deepcopy
 
+import rastervision as rv
 from rastervision.command import (AnalyzeCommand,
                                   CommandConfig,
                                   CommandConfigBuilder,
                                   NoOpCommand)
+from rastervision.protos.command_pb2 \
+    import CommandConfig as CommandConfigMsg
 
 class AnalyzeCommandConfig(CommandConfig):
     def __init__(self,
-                 task_config,
-                 scene_configs,
-                 analyzer_configs):
-        self.task_config = task_config
-        self.scene_configs = scene_configs
-        self.analyzer_configs = analyzer_configs
+                 task,
+                 scenes,
+                 analyzers):
+        super().__init__(self, rv.ANALYZE)
+        self.task_config = task
+        self.scenes = scenes
+        self.analyzers = analyzers
 
     def create_command(self, tmp_dir):
-        if len(self.scene_configs) == 0 or len(self.analyzer_configs) == 0:
+        if len(self.scenes) == 0 or len(self.analyzers) == 0:
             return NoOpCommand()
 
-        scenes = list(map(lambda s: s.create_scene(self.task_config, tmp_dir),
-                          self.scene_configs))
+        scenes = list(map(lambda s: s.create_scene(self.task, tmp_dir),
+                          self.scenes))
         analyzers = list(map(lambda a: a.create_analyzer(),
-                             self.analyzer_configs))
+                             self.analyzers))
         return AnalyzeCommand(scenes, analyzers)
 
     def to_proto(self):
-        pass
+        msg = super().to_proto()
+        task = self.task.to_proto()
+        scenes = list(map(lambda s: s.to_proto(), self.scenes))
+        analyzers = list(map(lambda a: a.to_proto(), self.analyzers))
+
+        msg.SetField("analyze_config",
+                     CommandConfig.AnalyzeConfig(task=task,
+                                                 scenes=scenes,
+                                                 analyzers=analyzers))
+
+        return msg
 
     @staticmethod
     def builder():
@@ -50,7 +64,19 @@ class AnalyzeCommandConfigBuilder(CommandConfigBuilder):
 
 
     def from_proto(self, msg):
-        pass
+        msg = msg.analyze_config
+
+        task = rv.TaskConfig.from_proto(msg.task)
+        scenes = list(map(rv.SceneConfig.from_proto,
+                          msg.scenes))
+        analyzers = list(map(rv.AnalyzerConfig.from_proto,
+                             msg.analyzers))
+
+        b = self.with_task(task)
+        b = b.with_scenes(scenes)
+        b = b.with_analyzers(analyzers)
+
+        return b
 
     def with_experiment(self, experiment_config):
         b = self.with_task(experiment_config.task)

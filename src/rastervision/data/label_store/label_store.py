@@ -8,8 +8,14 @@ class LabelStore(ABC):
     @abstractmethod
     def save(self, labels):
         """Save.
-              Args:
-                 labels - Labels to be saved, the type of which will be dependant on the type
-                          of task.
+
+        Args:
+           labels - Labels to be saved, the type of which will be dependant on the type
+                    of task.
         """
+        pass
+
+    @abstractmethod
+    def load(self):
+        """Loads Labels from this label store."""
         pass

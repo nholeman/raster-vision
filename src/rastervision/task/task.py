@@ -24,7 +24,7 @@ class Task(object):
             backend: Backend
         """
         self.backend = backend
-        self.config = config
+        self.config = task_config
 
     @abstractmethod
     def get_train_windows(self, scene, options):
@@ -100,7 +100,7 @@ class Task(object):
     def get_class_map(self):
         return self.class_map
 
-    def make_chips(self, train_scenes, validation_scenes, options):
+    def make_chips(self, train_scenes, validation_scenes, augmentors, options):
         """Make training chips.
 
         Convert Scenes with a ground_truth_label_store into training
@@ -114,7 +114,7 @@ class Task(object):
             options: MakeChipsConfig.Options
         """
 
-        def _process_scene(scene, type_):
+        def _process_scene(scene, type_, augment):
             data = TrainingData()
             print(
                 'Making {} chips for scene: {}'.format(type_, scene.id),
@@ -131,10 +131,11 @@ class Task(object):
             # Tensorboard are more diverse.
             data.shuffle()
 
-            # TODO: Process data augmentation
+            # Process augmentation
+            if augment:
+                for augmentor in augmentors:
+                    data = augmentor.process(data)
 
-            # TODO load and delete scene data as needed to avoid
-            # running out of disk space
             return self.backend.process_scene_data(scene, data, self.class_map,
                                                    options)
 
@@ -142,9 +143,13 @@ class Task(object):
             return [_process_scene(scene, type_) for scene in scenes]
 
         # TODO: parallel processing!
-        processed_training_results = _process_scenes(train_scenes, TRAIN)
+        processed_training_results = _process_scenes(train_scenes,
+                                                     TRAIN,
+                                                     augment=True)
         processed_validation_results = _process_scenes(validation_scenes,
-                                                       VALIDATION)
+                                                       VALIDATION,
+                                                       augment=False)
+
         self.backend.process_sceneset_results(processed_training_results,
                                               processed_validation_results,
                                               self.class_map, options)
@@ -213,23 +218,23 @@ class Task(object):
             if options.prediction_package_uri:
                 save_predict_package(config)
 
-    def eval(self, scenes, options):
-        """Evaluate predictions against ground truth in scenes.
+    # def eval(self, scenes, options):
+    #     """Evaluate predictions against ground truth in scenes.
 
-        Writes output to URI in options.
+    #     Writes output to URI in options.
 
-        Args:
-            scenes: list of Scenes that contain both
-                ground_truth_label_store and prediction_label_store
-            options: EvalConfig.Options
-        """
-        evaluation = self.get_evaluation()
-        for scene in scenes:
-            print('Computing evaluation for scene...')
-            ground_truth = scene.ground_truth_label_store
-            predictions = scene.prediction_label_store
+    #     Args:
+    #         scenes: list of Scenes that contain both
+    #             ground_truth_label_store and prediction_label_store
+    #         options: EvalConfig.Options
+    #     """
+    #     evaluation = self.get_evaluation()
+    #     for scene in scenes:
+    #         print('Computing evaluation for scene {}...'.format(scene.scene_id))
+    #         ground_truth = scene.ground_truth_label_source.get_labels()
+    #         predictions = scene.prediction_label_store.get_labels()
 
-            scene_evaluation = self.get_evaluation()
-            scene_evaluation.compute(self.class_map, ground_truth, predictions)
-            evaluation.merge(scene_evaluation)
-        evaluation.save(options.output_uri)
+    #         scene_evaluation = self.get_evaluation()
+    #         scene_evaluation.compute(ground_truth, predictions)
+    #         evaluation.merge(scene_evaluation)
+    #     evaluation.save(options.output_uri)

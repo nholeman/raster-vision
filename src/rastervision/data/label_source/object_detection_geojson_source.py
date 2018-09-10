@@ -2,7 +2,7 @@ import json
 
 import numpy as np
 
-from rastervision.data.label import (ObjectDetectionLabels)
+from rastervision.data.label import ObjectDetectionLabels
 from rastervision.data.label_source import LabelSource
 from rastervision.data.label_source.utils import (add_classes_to_geojson,
                                                   load_label_store_json,

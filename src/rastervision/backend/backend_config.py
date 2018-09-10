@@ -26,11 +26,12 @@ class BackendConfig(Config):
         self.train_options = train_options
 
     @abstractmethod
-    def create_backend(self, task):
+    def create_backend(self, task_config):
         """Create the Backend that this configuration represents
 
            Args:
-              task: The task to be accomplised by this backend.
+              task_config: The task configuration for the task
+                           to be accomplished by this backend.
         """
         pass
 

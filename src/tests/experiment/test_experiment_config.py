@@ -40,6 +40,7 @@ class TestExperimentConfig(unittest.TestCase):
                               .with_id("od_test") \
                               .with_raster_source(img_path, channel_order=[0,1,2]) \
                               .with_label_source(label_path) \
+                              .with_stats_transformer() \
                               .build()
 
         dataset = rv.DatasetConfig.builder() \

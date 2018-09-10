@@ -3,6 +3,7 @@ from rastervision.core.box import Box
 
 
 # TODO also store scores
+# TODO rename to Chip Classification
 class ClassificationLabels(Labels):
     """Represents a spatial grid of cells associated with classes."""
 

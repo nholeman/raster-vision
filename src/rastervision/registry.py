@@ -43,6 +43,15 @@ class Registry:
              rv.OBJECT_DETECTION_GEOJSON): rv.data.ObjectDetectionGeoJSONSourceConfigBuilder,
             # (rv.LABEL_SOURCE,
             #  rv.CHIP_CLASSIFICATION_GEOJSON): rv.data.ChipClassificationGeoJSONSourceConfigBuilder,
+
+            # Analyzers
+            # TODO
+
+            # Augmentors
+            # TODO
+
+            # Evaluators
+            # TODO
         }
 
         self._internal_raster_sources = [
@@ -63,10 +72,10 @@ class Registry:
 
         self.command_config_builders = {
             rv.ANALYZE: rv.command.AnalyzeCommandConfigBuilder,
-            rv.CHIP: rv.command.ChipCommandConfigBuilder,
-            rv.TRAIN: rv.command.TrainCommandConfigBuilder,
-            rv.PREDICT: rv.command.PredictCommandConfigBuilder,
-            rv.EVAL: rv.command.EvalCommandConfigBuilder
+            # rv.CHIP: rv.command.ChipCommandConfigBuilder,
+            # rv.TRAIN: rv.command.TrainCommandConfigBuilder,
+            # rv.PREDICT: rv.command.PredictCommandConfigBuilder,
+            # rv.EVAL: rv.command.EvalCommandConfigBuilder
         }
 
         self.experiment_runners = {
@@ -124,6 +133,10 @@ class Registry:
 
         raise RegistryError("No DefaultLabelStoreProvider "
                             "found for {} and task type {}".format(s, task_type))
+
+    def get_default_evaluator(self, task_type):
+        # TODO
+        pass
 
     def get_command_config_builder(self, command_type):
         builder = self.command_config_builder.get(command_type)

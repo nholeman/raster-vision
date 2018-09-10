@@ -1,10 +1,5 @@
 import numpy as np
 
-from object_detection.utils.np_box_list import BoxList
-from object_detection.utils.np_box_list_ops import (
-    prune_non_overlapping_boxes, clip_to_window, concatenate,
-    non_max_suppression)
-
 from rastervision.core.box import Box
 from rastervision.core.labels import Labels
 
@@ -15,7 +10,10 @@ class ObjectDetectionLabels(Labels):
     Implemented using the Tensorflow Object Detection API's BoxList class.
     """
 
-    def __init__(self, npboxes, class_ids, scores=None):
+    def __init__(self,
+                 npboxes,
+                 class_ids,
+                 scores=None):
         """Construct a set of object detection labels.
 
         Args:
@@ -25,6 +23,9 @@ class ObjectDetectionLabels(Labels):
             class_ids: int numpy array of size n with class ids starting at 1
             scores: float numpy array of size n
         """
+        # Lazily load TF Object Detection
+        from object_detection.utils.np_box_list import BoxList
+
         self.boxlist = BoxList(npboxes)
         # This field name actually needs to be 'classes' to be able to use
         # certain utility functions in the TF Object Detection API.
@@ -137,6 +138,11 @@ class ObjectDetectionLabels(Labels):
                 overlapping
             clip: if True, clip label boxes to the window
         """
+        # Lazily load TF Object Detection
+        from object_detection.utils.np_box_list import BoxList
+        from object_detection.utils.np_box_list_ops import (
+            prune_non_overlapping_boxes, clip_to_window)
+
         window_npbox = window.npbox_format()
         window_boxlist = BoxList(np.expand_dims(window_npbox, axis=0))
         boxlist = prune_non_overlapping_boxes(
@@ -154,6 +160,8 @@ class ObjectDetectionLabels(Labels):
             labels1: ObjectDetectionLabels
             labels2: ObjectDetectionLabels
         """
+        from object_detection.utils.np_box_list_ops import concatenate
+
         new_boxlist = concatenate([labels1.to_boxlist(), labels2.to_boxlist()])
         return ObjectDetectionLabels.from_boxlist(new_boxlist)
 
@@ -173,6 +181,8 @@ class ObjectDetectionLabels(Labels):
         Returns:
             ObjectDetectionLabels
         """
+        from object_detection.utils.np_box_list_ops import non_max_suppression
+
         max_output_size = 1000000
         pruned_boxlist = non_max_suppression(
             labels.boxlist,

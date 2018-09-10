@@ -4,7 +4,7 @@ import numpy as np
 from shapely.strtree import STRtree
 from shapely import geometry
 
-from rastervision.data.label import (ClassificationLabels)
+from rastervision.data.label import ClassificationLabels
 from rastervision.data.label_source import LabelSource
 from rastervision.data.label_source.utils import (
     add_classes_to_geojson, load_label_store_json, geojson_to_object_detection_labels)

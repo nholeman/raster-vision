@@ -3,6 +3,14 @@ import os
 import rastervision as rv
 
 class ObjectDetectionIntegrationTest(rv.ExperimentSuite):
+    def make_backend(task, batch_size):
+        return rv.BackendConfig.builder(rv.TF_OBJECT_DETECTION) \
+                                  .with_task(task) \
+                                  .with_template(backend_conf_path) \
+                                  .with_pretrained_model(pretrained_model) \
+                                  .with_batch_size(batch_size)
+                                  .with_train_options(sync_interval=None,
+                                                      do_monitoring=False)
     def exp_main(self, tmp_dir):
         def get_path(part):
             return os.path.join(os.path.dirname(__file__), part)

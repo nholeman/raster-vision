@@ -1,6 +1,7 @@
 class Scene():
     """The raster data and labels associated with an area of interest."""
 
+    # TODO: Make id vs scene_id consistent across library
     def __init__(self,
                  scene_id,
                  raster_source,

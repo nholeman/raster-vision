@@ -1,0 +1,16 @@
+syntax = "proto2";
+
+package rv.protos;
+
+import "google/protobuf/struct.proto";
+
+message EvaluatorConfig {
+    required string evaluator_type = 1;
+
+    oneof evaluator_config {
+        string eval_uri = 2;
+
+        // Configuration for custom evaluators
+        google.protobuf.Struct custom_config = 3;
+    }
+}

@@ -1,16 +1,21 @@
 from abc import ABC, abstractmethod
 
+from rastervision.protos.command_pb2 \
+    import CommandConfig as CommandConfigMsg
+
 class CommandConfig(ABC):
+    def __init__(self, command_type):
+        self.command_type = command_type
+
     @abstractmethod
     def create_command(self):
         """Run the command."""
         pass
 
-    @abstractmethod
     def to_proto(self):
         """Returns the protobuf configuration for this config.
         """
-        pass
+        return CommandConfigMsg(command_type = self.command_type)
 
     @staticmethod
     @abstractmethod

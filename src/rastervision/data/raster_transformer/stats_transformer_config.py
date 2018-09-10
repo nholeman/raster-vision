@@ -13,9 +13,9 @@ class StatsTransformerConfig(RasterTransformerConfig):
         self.stats_uri = stats_uri
 
     def to_proto(self):
-        conf = RasterTransformerConfigMsg(transformer_type=self.transformer_type,
-                                          stats_uri=self.stats_uri)
-        return conf
+        msg = RasterTransformerConfigMsg(transformer_type=self.transformer_type,
+                                         stats_uri=self.stats_uri)
+        return msg
 
     def builder(self):
         return StatsTransformerConfigBuilder(self)

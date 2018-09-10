@@ -1,5 +1,8 @@
 import json
 
+from rastervision.data.label import ClassificationLabels
+from rastervision.data.label_source.chip_classification_geojson_source \
+    import read_labels
 from rastervision.data.label_store import LabelStore
 from rastervision.data.label_store.utils import classification_labels_to_geojson
 from rastervision.utils.files import str_to_file
@@ -47,3 +50,10 @@ class ChipClassificationGeoJSONStore(LabelStore):
         geojson_str = json.dumps(geojson_dict)
 
         str_to_file(geojson_str, self.uri)
+
+    def load(self):
+        self.labels = ClassificationLabels.make_empty()
+
+        json_dict = load_label_store_json(uri)
+        return read_labels(json_dict,
+                           self.crs_transformer)

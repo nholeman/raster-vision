@@ -9,17 +9,18 @@ from ..core.config import set_nested_keys
 from ..protos.backend_pb2 import BackendConfig as BackendConfigMsg
 from ..utils.files import file_to_str
 
-class TFObjectDetectionConfig(BackendConfig):
-    # Default location to Tensorflow Object Detection's scripts.
-    DEFAULT_SCRIPT_TRAIN = "/opt/tf-models/object_detection/train.py"
-    DEFAULT_SCRIPT_EVAL = "/opt/tf-models/object_detection/eval.py"
-    DEFAULT_SCRIPT_EXPORT = "/opt/tf-models/object_detection/export_inference_graph.py"
-    CHIP_OUTPUT_FILES = ["label-map.pbtxt",
-                         "train-debug-chips.zip",
-                         "train.record",
-                         "validation-debug-chips.zip",
-                         "validation.record"]
+# Default location to Tensorflow Object Detection's scripts.
+DEFAULT_SCRIPT_TRAIN = "/opt/tf-models/object_detection/train.py"
+DEFAULT_SCRIPT_EVAL = "/opt/tf-models/object_detection/eval.py"
+DEFAULT_SCRIPT_EXPORT = "/opt/tf-models/object_detection/export_inference_graph.py"
+CHIP_OUTPUT_FILES = ["label-map.pbtxt",
+                     "train-debug-chips.zip",
+                     "train.record",
+                     "validation-debug-chips.zip",
+                     "validation.record"]
 
+
+class TFObjectDetectionConfig(BackendConfig):
     class ScriptLocations:
         def __init__(self,
                      train_uri=DEFAULT_SCRIPT_TRAIN,
@@ -216,9 +217,9 @@ class TFObjectDetectionConfigBuilder(BackendConfigBuilder):
         return b
 
     def with_script_uris(self,
-                         train_uri=TFObjectDetectionConfig.DEFAULT_SCRIPT_TRAIN,
-                         eval_uri=TFObjectDetectionConfig.DEFAULT_SCRIPT_EVAL,
-                         export_uri=TFObjectDetectionConfig.DEFAULT_SCRIPT_EXPORT):
+                         train_uri=DEFAULT_SCRIPT_TRAIN,
+                         eval_uri=DEFAULT_SCRIPT_EVAL,
+                         export_uri=DEFAULT_SCRIPT_EXPORT):
         b = deepcopy(self)
         b.config['script_locations'] = ScriptLocations(train_uri,
                                                        eval_uri,
