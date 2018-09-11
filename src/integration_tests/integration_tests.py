@@ -13,6 +13,8 @@ import tensorflow
 import rastervision as rv
 import rastervision.workflows.chain as chain_workflow
 
+from integration_tests.object_detection_tests.experiment import ObjectDetectionIntegrationTest
+
 all_tests = [rv.CHIP_CLASSIFICATION, rv.OBJECT_DETECTION]
 
 np.random.seed(1234)
@@ -136,6 +138,12 @@ def run_test(test, temp_dir):
     # Check serialization
     msg = experiment.to_proto()
     experiment = rv.ExperimentConfig.from_proto(msg)
+    msg2 = experiment.to_proto()
+    import google.protobuf.json_format
+    import json
+    from object_detection.protos.pipeline_pb2 import TrainEvalPipelineConfig
+    config = json_format.ParseDict(remove_nulls(msg2.backend_config), TrainEvalPipelineConfig())
+    open('/opt/src/debug-backend.config', 'w').write(config)
 
     # Check that running doesn't raise any exceptions.
     try:
@@ -158,7 +166,8 @@ def run_test(test, temp_dir):
 def main(tests):
     """Runs RV end-to-end and checks that evaluation metrics are correct."""
     if len(tests) == 0:
-        tests = all_tests
+        # tests = all_tests
+        tests = [rv.OBJECT_DETECTION]
 
     with TemporaryDirectory() as temp_dir:
         errors = []
@@ -181,18 +190,18 @@ def main(tests):
         if errors:
             exit(1)
 
-def main():
-    # TODO: Integrate with everything else
-    from integration_tests.object_detection_tests.experiment import ObjectDetectionIntegrationTest
-    from google.protobuf import json_format
+# def main():
+#     # TODO: Integrate with everything else
+#     from integration_tests.object_detection_tests.experiment import ObjectDetectionIntegrationTest
+#     from google.protobuf import json_format
 
-    with TemporaryDirectory() as tmp_dir:
-        e = ObjectDetectionIntegrationTest().exp_main(tmp_dir)
+#     with TemporaryDirectory() as tmp_dir:
+#         e = ObjectDetectionIntegrationTest().exp_main(tmp_dir)
 
-        msg = e.to_proto()
-        open("/opt/src/rv-experiment-serialized.json", 'w').write(json_format.MessageToJson(msg))
-        e2 = rv.ExperimentConfig.from_proto(msg)
-        rv.ExperimentRunner.get_runner(rv.LOCAL).run(e2)
+#         msg = e.to_proto()
+#         open("/opt/src/rv-experiment-serialized.json", 'w').write(json_format.MessageToJson(msg))
+#         e2 = rv.ExperimentConfig.from_proto(msg)
+#         rv.ExperimentRunner.get_runner(rv.LOCAL).run(e2)
 
 
 if __name__ == '__main__':
