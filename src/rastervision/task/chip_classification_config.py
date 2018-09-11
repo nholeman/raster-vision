@@ -3,9 +3,10 @@ from typing import (List, Dict, Tuple, Union)
 
 import rastervision as rv
 from rastervision.core.class_map import (ClassMap, ClassItem)
-from .task_config import (TaskConfig, TaskConfigBuilder)
-from .util import (construct_class_map, classes_to_class_items)
-from ..protos.task_pb2 import TaskConfig as TaskConfigMsg
+from rastervision.task import (TaskConfig, TaskConfigBuilder)
+from rastervision.task.utils import (construct_class_map, classes_to_class_items)
+from rastervision.protos.task_pb2 import TaskConfig as TaskConfigMsg
+from rastervision.protos.class_item_pb2 import ClassItem as ClassItemMsg
 
 class ChipClassificationConfig(TaskConfig):
     def __init__(self,
@@ -18,16 +19,13 @@ class ChipClassificationConfig(TaskConfig):
     def create_task(self, backend):
         return rv.ml_task.ChipClassification(backend, self)
 
-    def builder(self):
-        return ChipClassificationConfigBuilder(self)
-
     def to_proto(self):
         conf = TaskConfigMsg.ChipClassificationConfig(chip_size=self.chip_size,
                                                       class_items=classes_to_class_items(self.class_map))
         return TaskConfigMsg(task_type=rv.CHIP_CLASSIFICATION,
                              chip_classification_config=conf)
 
-    def preprocess_command(self, command_type, experiment_config):
+    def preprocess_command(self, command_type, experiment_config, context=None):
         return (self, rv.core.ComandIODefinition())
 
 class ChipClassificationConfigBuilder(TaskConfigBuilder):
@@ -47,7 +45,7 @@ class ChipClassificationConfigBuilder(TaskConfigBuilder):
 
     def with_classes(self, classes: Union[ClassMap,
                                           List[str],
-                                          List[TaskConfigMsg.ClassItem],
+                                          List[ClassItemMsg],
                                           List[ClassItem],
                                           Dict[str, int],
                                           Dict[str, Tuple[int, str]]]):

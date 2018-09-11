@@ -1,13 +1,16 @@
+import os
 from copy import deepcopy
 from tempfile import TemporaryDirectory
 from google.protobuf import (text_format, json_format)
 import json
 
 import rastervision as rv
-from .backend_config import (BackendConfig, BackendConfigBuilder)
-from ..core.config import set_nested_keys
-from ..protos.backend_pb2 import BackendConfig as BackendConfigMsg
-from ..utils.files import file_to_str
+from rastervision.backend import (BackendConfig,
+                                  BackendConfigBuilder,
+                                  TFObjectDetection)
+from rastervision.core.config import set_nested_keys
+from rastervision.protos.backend_pb2 import BackendConfig as BackendConfigMsg
+from rastervision.utils.files import file_to_str
 
 # Default location to Tensorflow Object Detection's scripts.
 DEFAULT_SCRIPT_TRAIN = "/opt/tf-models/object_detection/train.py"
@@ -33,16 +36,22 @@ class TFObjectDetectionConfig(BackendConfig):
     def __init__(self,
                  backend_config,
                  pretrained_model_uri=None,
-                 train_options=BackendConfig.TrainOptions(),
-                 script_locations=ScriptLocations(),
+                 train_options=None,
+                 script_locations=None,
                  debug=False,
                  training_data_uri=None,
                  training_output_uri=None,
                  model_uri=None):
+        if train_options is None:
+            train_options = BackendConfig.TrainOptions()
+        if script_locations is None:
+            script_locations = TFObjectDetectionConfig.ScriptLocations()
+
         super().__init__(rv.TF_OBJECT_DETECTION, pretrained_model_uri, train_options)
         self.backend_config = backend_config
         self.pretrained_model_uri = pretrained_model_uri
         self.train_options = train_options
+        self.script_locations = script_locations
 
         # Internally set  from command preprocessing
         self.training_data_uri = training_data_uri
@@ -52,9 +61,6 @@ class TFObjectDetectionConfig(BackendConfig):
     def create_backend(self, task_config):
         return TFObjectDetection(self, task_config)
 
-    def builder(self):
-        return TFObjectDetectionConfigBuilder(self)
-
     def to_proto(self):
         d = {"backend_type": rv.TF_OBJECT_DETECTION,
              "config": self.backend_config}
@@ -62,9 +68,9 @@ class TFObjectDetectionConfig(BackendConfig):
             d["pretrained_model_uri"] = self.pretrained_model_uri
         return json_format.ParseDict(d,  BackendConfigMsg())
 
-    def preprocess_command(self, command_type, experiment_config, context=[]):
+    def preprocess_command(self, command_type, experiment_config, context=None):
         conf = self
-        io_def = rv.core.ComandIODefinition()
+        io_def = rv.core.CommandIODefinition()
         if command_type == rv.CHIP:
             conf.training_data_uri = experiment_config.chip_uri
 
@@ -73,7 +79,7 @@ class TFObjectDetectionConfig(BackendConfig):
                     CHIP_OUTPUT_FILES))
             io_def.add_outputs(outputs)
         if command_type == rv.TRAIN:
-            conf.training_output_uri = experiment_config.chip_uri
+            conf.training_output_uri = experiment_config.train_uri
             inputs = list(
                 map(lambda x: os.path.join(experiment_config.chip_uri, x),
                     CHIP_OUTPUT_FILES))

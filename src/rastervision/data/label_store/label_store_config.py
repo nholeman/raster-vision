@@ -15,10 +15,6 @@ class LabelStoreConfig(Config):
         msg.store_type = self.store_type
         return msg
 
-    def builder(self):
-        return rv._registry.get_config_builder(rv.LABEL_STORE,
-                                               self.store_type)(self)
-
     @abstractmethod
     def create_store(self, task_config, crs_transformer, tmp_dir):
         """Create the Label Store for this configuration.
@@ -32,9 +28,14 @@ class LabelStoreConfig(Config):
         """
         pass
 
+    def to_builder(self):
+        return rv._registry.get_config_builder(rv.LABEL_STORE,
+                                               self.store_type)(self)
+
     @staticmethod
     def builder(store_type):
-        return rv._registry.get_config_builder(rv.LABEL_STORE, store_type)()
+        return rv._registry.get_config_builder(rv.LABEL_STORE,
+                                               store_type)()
 
     @staticmethod
     def from_proto(msg):

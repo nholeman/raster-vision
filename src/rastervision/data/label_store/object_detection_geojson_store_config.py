@@ -1,24 +1,24 @@
+import os
 from copy import deepcopy
 
 import rastervision as rv
-from rastervision.data.raster_source.label_store_config \
-    import (LabelStoreConfig, LabelStoreConfigBuilder)
-from rastervision.task.util import (construct_classes, classes_to_class_items)
-from rastervision.protos.raster_source2_pb2 import LabelStoreConfig as LabelStoreConfigMsg
+from rastervision.data.label_store import (LabelStoreConfig,
+                                           LabelStoreConfigBuilder,
+                                           ObjectDetectionGeoJSONStore)
+from rastervision.protos.label_store2_pb2 import LabelStoreConfig as LabelStoreConfigMsg
 
 
 class ObjectDetectionGeoJSONStoreConfig(LabelStoreConfig):
-    def __init__(self, uri):
-        super().__init__(source_type=rv.OBJECT_DETECTION_GEOJSON)
+    def __init__(self, uri=None):
+        super().__init__(store_type=rv.OBJECT_DETECTION_GEOJSON)
         self.uri = uri
 
     def to_proto(self):
         msg = super().to_proto()
-        opts = LabelStoreConfigMsg.ObjectDetectionGeoJSONFile(self.uri)
-        msg.object_detection_geojson_source = opts
+        msg.uri = self.uri
         return msg
 
-    def create_source(self, task_config, crs_transformer, tmp_dir):
+    def create_store(self, task_config, crs_transformer, tmp_dir):
         return ObjectDetectionGeoJSONStore(self.uri, crs_transformer, task_config.class_map)
 
     def preprocess_command(self, command_type, experiment_config, context=[]):
@@ -35,9 +35,9 @@ class ObjectDetectionGeoJSONStoreConfig(LabelStoreConfig):
                     if isinstance(c, rv.SceneConfig):
                         uri = os.path.join(root, "{}.json".format(c.scene_id))
                 if uri:
-                    conf = conf.builder() \
+                    conf = conf.to_builder() \
                                .with_uri(uri) \
-                               .builder()
+                               .build()
                     io_def.add_output(uri)
                 else:
                     raise rv.ConfigError("ObjectDetectionGeoJSONStoreConfig has no "
@@ -55,7 +55,7 @@ class ObjectDetectionGeoJSONStoreConfig(LabelStoreConfig):
         return (conf, io_def)
 
 
-class ObjectDetectionGeoJSONStoreConfigBuilder(RasterStoreConfigBuilder):
+class ObjectDetectionGeoJSONStoreConfigBuilder(LabelStoreConfigBuilder):
     def __init__(self, prev=None):
         config = {}
         if prev:
@@ -67,7 +67,7 @@ class ObjectDetectionGeoJSONStoreConfigBuilder(RasterStoreConfigBuilder):
         b = ObjectDetectionGeoJSONStoreConfigBuilder()
 
         return b \
-            .with_uri(msg.object_detection_geojson_source.uri)
+            .with_uri(msg.uri)
 
     def with_uri(self, uri):
         b = deepcopy(self)

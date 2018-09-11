@@ -11,7 +11,7 @@ from rastervision.utils.files import file_exists
 class GeoTiffSourceConfig(RasterSourceConfig):
     def __init__(self,
                  uris,
-                 transformers=[],
+                 transformers=None,
                  channel_order=None):
         super().__init__(source_type=rv.GEOTIFF_SOURCE,
                          transformers=transformers,
@@ -27,8 +27,8 @@ class GeoTiffSourceConfig(RasterSourceConfig):
         transformers = self.create_transformers()
         return GeoTiffSource(self.uris, transformers, tmp_dir, self.channel_order)
 
-    def preprocess_command(self, command_type, experiment_config, context=[]):
-        (conf, io_def) = super().preprocess_command(command_type, experiment_config)
+    def preprocess_command(self, command_type, experiment_config, context=None):
+        (conf, io_def) = super().preprocess_command(command_type, experiment_config, context)
         for uri in self.uris:
             io_def.add_input(uri)
 

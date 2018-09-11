@@ -14,9 +14,16 @@ class CommandDefinition:
 
         for experiment in experiments:
             e = experiment
-            command_definitions = {}
+            command_definitions = []
             for command_type in rv.ALL_COMMANDS:
+                print("PROCESSING COMMAND {}".format(command_type))
                 (e, io_def) = e.preprocess_command(command_type, e)
+                print("INPUTS:")
+                for i in io_def.input_uris:
+                    print("\t{}".format(i))
+                print("OUTPUTS:")
+                for i in io_def.output_uris:
+                    print("\t{}".format(i))
                 command_config = e.make_command_config(command_type)
                 command_def = cls(e.id, command_config, io_def)
                 command_definitions.append(command_def)
@@ -42,10 +49,10 @@ class CommandDefinition:
         seen_commands = set([])
         for command_def in command_definitions:
             k = (command_def.command_config.command_type,
-                 set(command_def.io_def.input_uris),
-                 set(command_def.io_def.output_uris))
-            if not k in s:
-                s.add(k)
+                 '|'.join(sorted(command_def.io_def.input_uris)),
+                 '|'.join(sorted(command_def.io_def.output_uris)))
+            if not k in seen_commands:
+                seen_commands.add(k)
                 unique_commands.append(command_def)
 
         return unique_commands
@@ -76,9 +83,9 @@ class CommandDefinition:
         for command_def in command_definitions:
             command_type = command_def.command_config.command_type
             for output_uri in command_def.io_def.output_uris:
-                if (output_uri, command_type) not in output_to_defs:
-                    output_to_defs[(output_uri, command_type)] = []
-                output_to_defs[(output_uri, command_type)].append(command_def)
+                if (output_uri, command_type) not in outputs_to_defs:
+                    outputs_to_defs[(output_uri, command_type)] = []
+                outputs_to_defs[(output_uri, command_type)].append(command_def)
 
         for ((output_uri, _), command_defs) in outputs_to_defs.items():
             if len(command_defs) > 1:

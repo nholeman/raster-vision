@@ -5,19 +5,18 @@ from rastervision.command import (TrainCommand,
                                   CommandConfig,
                                   CommandConfigBuilder,
                                   NoOpCommand)
-from rastervision.protos.train_command_pb2 \
-    import TrainCommandConfig as TrainCommandConfigMsg
+from rastervision.protos.command_pb2 \
+    import CommandConfig as CommandConfigMsg
 
 class TrainCommandConfig(CommandConfig):
-    def __init__(self,
-                 task,
-                 backend):
+    def __init__(self, task, backend):
+        super().__init__(rv.TRAIN)
         self.task = task
         self.backend = backend
 
     def create_command(self, tmp_dir):
         backend = self.backend.create_backend(self.task)
-        task = self.task.create_tasks(backend)
+        task = self.task.create_task(backend)
 
         return TrainCommand(task)
 
@@ -29,8 +28,7 @@ class TrainCommandConfig(CommandConfig):
 
         msg.SetField("train_config",
                      CommandConfigMsg.TrainConfig(task=task,
-                                                  train_scenes=train_scenes,
-                                                  val_scenes=val_scenes))
+                                                  backend=backend))
 
         return msg
 
@@ -40,49 +38,40 @@ class TrainCommandConfig(CommandConfig):
 
 class TrainCommandConfigBuilder(CommandConfigBuilder):
     def __init__(self):
-        self.train_scenes = []
-        self.val_scenes = []
         self.task = None
+        self.backend = None
 
     def build(self):
         if self.task is None:
-            raise rv.ConfigError("task not set. Use with_task or with_experiment")
+            raise rv.ConfigError("Task not set. Use with_task or with_experiment")
 
-        return TrainCommandConfig(self.train_scenes,
-                                 self.val_scenes,
-                                 self.task)
+        if self.backend is None:
+            raise rv.ConfigError("Backend not set. Use with_task or with_experiment")
+
+        return TrainCommandConfig(self.task,
+                                  self.backend)
 
 
     def from_proto(self, msg):
         task = rv.TaskConfig.from_proto(msg.task)
-        train_scenes = list(map(rv.SceneConfig.from_proto,
-                                msg.train_scenes))
-        val_scenes = list(map(rv.SceneConfig.from_proto,
-                                msg.train_scenes))
+        backend = rv.TaskConfig.from_proto(msg.backend)
 
         b = self.with_task(task)
-        b = b.with_train_scenes(train_scenes)
-        b = b.with_val_sceness(val_scenes)
+        b = self.with_backend(backend)
 
         return b
 
     def with_experiment(self, experiment_config):
         b = self.with_task(experiment_config.task)
-        b = b.with_train_scenes(experiment_config.dataset.train_scenes)
-        b = b.with_val_scenes(experiment_config.dataset.val_scenes)
+        b = b.with_backend(experiment_config.backend)
         return  b
 
     def with_task(self, task):
-        b = deepcopy(b)
-        b.task_config = task
+        b = deepcopy(self)
+        b.task = task
         return b
 
-    def with_train_scenes(self, scenes):
-        b = deepcopy(b)
-        b.train_scenes = scenes
-        return b
-
-    def with_val_scenes(self, scenes):
-        b = deepcopy(b)
-        b.val_scenes = scenes
+    def with_backend(self, backend):
+        b = deepcopy(self)
+        b.backend = backend
         return b

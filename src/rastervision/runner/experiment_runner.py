@@ -1,14 +1,19 @@
 from abc import (ABC, abstractmethod)
-from typing import List
+from typing import (List, Union)
 
 import networkx as nx
 
 import rastervision as rv
 from rastervision.utils.files import file_exists
-from rastervision.runner.command_definition import CommandDefinition
+from rastervision.runner import (CommandDefinition, CommandDAG)
 
 class ExperimentRunner(ABC):
-    def run(self, experiments: List[rv.ExperimentConfig], commands_to_run=rv.ALL_COMMANDS):
+    def run(self,
+            experiments: Union[List[rv.ExperimentConfig],rv.ExperimentConfig],
+            commands_to_run=rv.ALL_COMMANDS):
+        if not isinstance(experiments, list):
+            experiments = [experiments]
+
         command_definitions = CommandDefinition.from_experiments(experiments)
 
         # Filter  out commands we aren't running.
@@ -54,8 +59,12 @@ class ExperimentRunner(ABC):
 
         command_dag = CommandDAG(unique_commands)
 
-        _run_experiment(command_dag)
+        self._run_experiment(command_dag)
 
     @abstractmethod
     def _run_experiment(self, command_list, command_dag):
         pass
+
+    @staticmethod
+    def get_runner(runner_type):
+        return rv._registry.get_experiment_runner(runner_type)

@@ -5,3 +5,9 @@ from rastervision.evaluation.evaluator_config import *
 from rastervision.evaluation.classification_evaluation import *
 from rastervision.evaluation.chip_classification_evaluation import *
 from rastervision.evaluation.object_detection_evaluation import *
+from rastervision.evaluation.classification_evaluator import *
+from rastervision.evaluation.classification_evaluator_config import *
+from rastervision.evaluation.chip_classification_evaluator import *
+from rastervision.evaluation.chip_classification_evaluator_config import *
+from rastervision.evaluation.object_detection_evaluator import *
+from rastervision.evaluation.object_detection_evaluator_config import *

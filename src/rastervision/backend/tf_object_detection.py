@@ -14,7 +14,7 @@ import uuid
 from PIL import Image
 import tensorflow as tf
 import numpy as np
-from google.protobuf import text_format
+from google.protobuf import text_format, json_format
 
 from tensorflow.core.example.example_pb2 import Example
 from typing import List
@@ -30,6 +30,7 @@ from rastervision.labels.object_detection_labels import (ObjectDetectionLabels)
 from rastervision.utils.files import (get_local_path, upload_if_needed,
                                       make_dir, download_if_needed,
                                       file_to_str, sync_dir, start_sync)
+from rastervision.utils.misc import save_img
 
 TRAIN = 'train'
 VALIDATION = 'validation'
@@ -305,7 +306,7 @@ class TrainingPackage(object):
         validation.record
     """
 
-    def __init__(self, base_uri):
+    def __init__(self, base_uri, config):
         """Constructor.
 
         Creates a temporary directory.
@@ -313,6 +314,7 @@ class TrainingPackage(object):
         Args:
             base_uri: (string) URI of directory containing files used to
                 train model, possibly remote
+            config: TFObjectDetectionConfig
         """
 
         self.temp_dir_obj = tempfile.TemporaryDirectory()
@@ -321,6 +323,8 @@ class TrainingPackage(object):
         self.base_uri = base_uri
         self.base_dir = self.get_local_path(base_uri)
         make_dir(self.base_dir)
+
+        self.config = config
 
     def get_local_path(self, uri):
         """Get local version of uri.
@@ -460,8 +464,20 @@ class TrainingPackage(object):
                 a config file for the TF Object Detection API. Examples can be
                 found here https://github.com/tensorflow/models/tree/master/research/object_detection/samples/configs  # noqa
         """
-        # Download and parse config.
-        config = json_format.ParseDict(self.config.backend_config, TrainEvalPipelineConfig())
+        # Parse configuration
+        # We must remove 'nulls' that appear due to translating empty
+        # messages. These appear when translating between text and JSON based
+        # protobuf messages, and using the google.protobuf.Struct type to store
+        # the JSON. This appears when TFOD uses empty message types as an enum.
+        def remove_nulls(_d):
+            for k in _d:
+                if _d[k] is None:
+                    _d[k] = {}
+                if type(_d[k]) is dict:
+                    remove_nulls(_d[k])
+            return _d
+
+        config = json_format.ParseDict(remove_nulls(self.config.backend_config), TrainEvalPipelineConfig())
 
         # Update config using local paths.
         if self.config.pretrained_model_uri:
@@ -540,44 +556,42 @@ class TFObjectDetection(Backend):
         # persist scene training packages for when output_uri is remote
         self.scene_training_packages = []
         self.config = backend_config
-        self.task = task_config
+        self.class_map = task_config.class_map
 
-    def process_scene_data(self, scene, data, class_map, options):
+    def process_scene_data(self, scene, data):
         """Process each scene's training data
 
         Args:
             scene: Scene
             data: TrainingData
             class_map: ClassMap
-            options: MakeChipsConfig.Options
 
         Returns:
             the local path to the scene's TFRecord
         """
         # TODO: Check if uint8
-        training_package = TrainingPackage(self.config.output_uri)
+        training_package = TrainingPackage(self.config.training_data_uri, self.config)
         self.scene_training_packages.append(training_package)
-        tf_examples = make_tf_examples(data, class_map)
+        tf_examples = make_tf_examples(data, self.class_map)
         # Ensure directory is unique since scene id's could be shared between
         # training and test sets.
         record_path = training_package.get_local_path(
             training_package.get_record_uri('{}-{}'.format(
-                scene.id, uuid.uuid4())))
+                scene.scene_id, uuid.uuid4())))
         write_tf_record(tf_examples, record_path)
 
         return record_path
 
-    def process_sceneset_results(self, training_results, validation_results,
-                                 class_map, options):
+    def process_sceneset_results(self,
+                                 training_results,
+                                 validation_results):
         """After all scenes have been processed, merge all TFRecords
 
         Args:
             training_results: list of training scenes' TFRecords
             validation_results: list of validation scenes' TFRecords
-            class_map: ClassMap
-            options: MakeChipsConfig.Options
         """
-        training_package = TrainingPackage(self.config.training_data_uri)
+        training_package = TrainingPackage(self.config.training_data_uri, self.config)
 
         def _merge_training_results(results, split):
 
@@ -589,11 +603,13 @@ class TFObjectDetection(Backend):
             merge_tf_records(record_path, results)
 
             # Save debug chips.
-            if self.config.debug:
+            # TODO
+            #if self.config.debug:
+            if True:
                 debug_zip_path = training_package.get_local_path(
                     training_package.get_debug_chips_uri(split))
                 with tempfile.TemporaryDirectory() as debug_dir:
-                    make_debug_images(record_path, class_map, debug_dir)
+                    make_debug_images(record_path, self.class_map, debug_dir)
                     shutil.make_archive(
                         os.path.splitext(debug_zip_path)[0], 'zip', debug_dir)
 
@@ -603,17 +619,18 @@ class TFObjectDetection(Backend):
         # Save TF label map based on class_map.
         class_map_path = training_package.get_local_path(
             training_package.get_class_map_uri())
-        tf_class_map = make_tf_class_map(class_map)
+        tf_class_map = make_tf_class_map(self.class_map)
         save_tf_class_map(tf_class_map, class_map_path)
 
-        training_package.upload(debug=self.config.debug)
+        # TODO: Debug
+        training_package.upload(debug=True)
 
         # clear scene training packages
         del self.scene_training_packages[:]
 
-    def train(self, class_map, options):
+    def train(self):
         # Download training data and update config file.
-        training_package = TrainingPackage(self.config.training_data_uri)
+        training_package = TrainingPackage(self.config.training_data_uri, self.config)
         training_package.download_data()
         config_path = training_package.download_config()
 
@@ -641,10 +658,10 @@ class TFObjectDetection(Backend):
             export_inference_graph(
                 output_dir, config_path, output_dir, export_py=export_py)
 
-            if urlparse(self.config.train_output_uri).scheme == 's3':
-                sync_dir(output_dir, self.config.train_output_uri, delete=True)
+            if urlparse(self.config.training_output_uri).scheme == 's3':
+                sync_dir(output_dir, self.config.training_output_uri, delete=True)
 
-    def predict(self, chips, windows, options):
+    def predict(self, chips, windows):
         # Load and memoize the detection graph and TF session.
         if self.detection_graph is None:
             with tempfile.TemporaryDirectory() as temp_dir:

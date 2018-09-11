@@ -15,10 +15,6 @@ class LabelSourceConfig(Config):
         msg.source_type = self.source_type
         return msg
 
-    def builder(self):
-        return rv._registry.get_config_builder(rv.LABEL_SOURCE,
-                                               self.source_type)(self)
-
     @abstractmethod
     def create_source(self, task_config, crs_transformer, tmp_dir):
         """Create the Label Source for this configuration.
@@ -32,9 +28,14 @@ class LabelSourceConfig(Config):
         """
         pass
 
+    def to_builder(self):
+        return rv._registry.get_config_builder(rv.LABEL_SOURCE,
+                                               self.source_type)(self)
+
     @staticmethod
     def builder(source_type):
-        return rv._registry.get_config_builder(rv.LABEL_SOURCE, source_type)()
+        return rv._registry.get_config_builder(rv.LABEL_SOURCE,
+                                               source_type)()
 
     @staticmethod
     def from_proto(msg):

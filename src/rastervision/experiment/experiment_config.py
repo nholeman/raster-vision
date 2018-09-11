@@ -12,49 +12,70 @@ class ExperimentConfig(Config):
                  task,
                  backend,
                  dataset,
+                 evaluators,
                  analyze_uri,
                  chip_uri,
                  train_uri,
                  predict_uri,
                  eval_uri,
-                 analyzers=[]):
+                 analyzers=None):
+        if analyzers is None:
+            analyzers = []
+
         self.id = id
         self.task = task
         self.backend = backend
         self.dataset = dataset
         self.analyzers = analyzers
+        self.evaluators = evaluators
         self.analyze_uri = analyze_uri
         self.chip_uri = chip_uri
         self.train_uri = train_uri
         self.predict_uri = predict_uri
         self.eval_uri = eval_uri
 
-    def preprocess_command(self, command_type, experiment_config):
+    def preprocess_command(self, command_type, experiment_config, context=None):
         """
         Returns a tuple (config, dependencies) with the
         """
         io_def = CommandIODefinition()
         new_task, sub_io_def = self.task.preprocess_command(command_type,
-                                                            experiment_config)
+                                                            experiment_config,
+                                                            context)
         io_def.merge(sub_io_def)
+
         new_backend, sub_io_def = self.backend.preprocess_command(command_type,
-                                                                  experiment_config)
+                                                                  experiment_config,
+                                                                  context)
         io_def.merge(sub_io_def)
+
         new_dataset, sub_io_def = self.dataset.preprocess_command(command_type,
-                                                                  experiment_config)
+                                                                  experiment_config,
+                                                                  context)
         io_def.merge(sub_io_def)
+
         new_analyzers = []
         for analyzer in self.analyzers:
             new_analyzer, sub_io_def = analyzer.preprocess_command(command_type,
-                                                                   experiment_config)
+                                                                   experiment_config,
+                                                                   context)
             io_def.merge(sub_io_def)
             new_analyzers.append(new_analyzer)
 
-        new_config = self.builder() \
+        new_evaluators = []
+        for evaluator in self.evaluators:
+            new_evaluator, sub_io_def = evaluator.preprocess_command(command_type,
+                                                                     experiment_config,
+                                                                     context)
+            io_def.merge(sub_io_def)
+            new_evaluators.append(new_evaluator)
+
+        new_config = self.to_builder() \
                          .with_task(new_task) \
                          .with_backend(new_backend) \
                          .with_dataset(new_dataset) \
                          .with_analyzers(new_analyzers) \
+                         .with_evaluators(new_analyzers) \
                          .build()
 
         return (new_config, io_def)
@@ -65,10 +86,17 @@ class ExperimentConfig(Config):
                            .build()
 
     def to_proto(self):
+        analyzers = list(map(lambda a: a.to_proto(),
+                             self.analyzers))
+        evaluators = list(map(lambda e: e.to_proto(),
+                              self.evaluators))
+
         msg = ExperimentConfigMsg(id=self.id,
                                   task=self.task.to_proto(),
                                   backend=self.backend.to_proto(),
-                                  dataset=self.dataset.to_proto())
+                                  dataset=self.dataset.to_proto(),
+                                  analyzers=analyzers,
+                                  evaluators=evaluators)
         msg.analyze_uri = self.analyze_uri
         msg.chip_uri = self.chip_uri
         msg.train_uri = self.train_uri
@@ -76,7 +104,7 @@ class ExperimentConfig(Config):
         msg.eval_uri = self.eval_uri
         return msg
 
-    def builder():
+    def to_builder(self):
         return ExperimentConfigBuilder(self)
 
     @staticmethod
@@ -98,13 +126,14 @@ class ExperimentConfigBuilder(ConfigBuilder):
                        "backend": prev.backend,
                        "dataset": prev.dataset,
                        "analyzers" : prev.analyzers,
+                       "evaluators" : prev.evaluators,
                        "analyze_uri": prev.analyze_uri,
                        "chip_uri": prev.chip_uri,
                        "train_uri": prev.train_uri,
                        "predict_uri": prev.predict_uri,
                        "eval_uri": prev.eval_uri }
         super().__init__(ExperimentConfig, config)
-        self.root_uri = None
+        self.root_uri = None # TODO: Store with experiment config?
         self.analyze_key = "default"
         self.chip_key = "default"
         self.train_key = "default"
@@ -140,6 +169,21 @@ class ExperimentConfigBuilder(ConfigBuilder):
                 raise rv.ConfigError("Need to set root_uri if command uri's not explicitly set.")
             uri = os.path.join(self.root_uri, rv.EVAL.lower(), self.eval_key)
             b = b.with_eval_uri(uri)
+
+        if not self.config.get('task'):
+            raise rv.ConfigError("Task needs to be set. Use 'with_task'.")
+
+        if not self.config.get('backend'):
+            raise rv.ConfigError("Backend needs to be set. Use 'with_backend'.")
+
+        if not self.config.get('dataset'):
+            raise rv.ConfigError("Dataset needs to be set. Use 'with_dataset'.")
+
+        evaluators = self.config.get('evaluators')
+        if not evaluators:
+            e = rv._registry.get_default_evaluator_provider(self.config['task'].task_type) \
+                            .construct(self.config['task'])
+            b = b.with_evaluator(e)
 
         return ExperimentConfig(**b.config)
 
@@ -182,6 +226,14 @@ class ExperimentConfigBuilder(ConfigBuilder):
 
     def with_analyzer(self, analyzer):
         return self.with_analyzers([analyzer])
+
+    def with_evaluators(self, evaluators):
+        b = deepcopy(self)
+        b.config['evaluators'] = evaluators
+        return b
+
+    def with_evaluator(self, evaluator):
+        return self.with_evaluators([evaluator])
 
     def with_analyze_uri(self, uri):
         b = deepcopy(self)

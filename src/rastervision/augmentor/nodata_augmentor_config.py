@@ -16,7 +16,7 @@ class NodataAugmentorConfig(AugmentorConfig):
                                  aug_prob=self.aug_prob)
         return msg
 
-    def builder(self):
+    def to_builder(self):
         return NodataAugmentorConfigBuilder(self)
 
     def create_augmentor(self):

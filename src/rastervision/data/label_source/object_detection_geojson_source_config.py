@@ -1,8 +1,9 @@
 from copy import deepcopy
 
 import rastervision as rv
-from rastervision.data.label_source \
-    import (LabelSourceConfig, LabelSourceConfigBuilder)
+from rastervision.data.label_source import (LabelSourceConfig,
+                                            LabelSourceConfigBuilder,
+                                            ObjectDetectionGeoJSONSource)
 from rastervision.protos.label_source_pb2 import LabelSourceConfig as LabelSourceConfigMsg
 
 
@@ -20,8 +21,8 @@ class ObjectDetectionGeoJSONSourceConfig(LabelSourceConfig):
     def create_source(self, task_config, crs_transformer, tmp_dir):
         return ObjectDetectionGeoJSONSource(self.uri, crs_transformer, task_config.class_map)
 
-    def preprocess_command(self, command_type, experiment_config):
-        io_def = CommandIODefinition()
+    def preprocess_command(self, command_type, experiment_config, context=[]):
+        io_def = rv.core.CommandIODefinition()
         io_def.add_input(self.uri)
 
         return (self, io_def)

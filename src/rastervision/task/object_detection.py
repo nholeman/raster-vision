@@ -30,8 +30,7 @@ def _make_chip_pos_windows(image_extent, label_store, chip_size):
     return pos_windows
 
 
-def _make_label_pos_windows(image_extent, label_store, options):
-    label_buffer = options.object_detection_options.label_buffer
+def _make_label_pos_windows(image_extent, label_store, label_buffer):
     pos_windows = []
     for box in label_store.get_labels().get_boxes():
         window = box.make_buffer(label_buffer, image_extent)
@@ -40,11 +39,13 @@ def _make_label_pos_windows(image_extent, label_store, options):
     return pos_windows
 
 
-def make_pos_windows(image_extent, label_store, chip_size, options):
-    window_method = options.object_detection_options.window_method
-
+def make_pos_windows(image_extent,
+                     label_store,
+                     chip_size,
+                     window_method,
+                     label_buffer):
     if window_method == 'label':
-        return _make_label_pos_windows(image_extent, label_store, options)
+        return _make_label_pos_windows(image_extent, label_store, label_buffer)
     elif window_method == 'image':
         return [image_extent.make_copy()]
     else:
@@ -71,11 +72,11 @@ def make_neg_windows(raster_source, label_store, chip_size, nb_windows,
     return neg_windows
 
 class ObjectDetection(Task):
-    def get_train_windows(self, scene, options):
+    def get_train_windows(self, scene):
         raster_source = scene.raster_source
-        label_store = scene.ground_truth_label_store
+        label_store = scene.ground_truth_label_source
 
-        window_method = options.object_detection_options.window_method
+        window_method = self.config.chip_options.window_method
         if window_method == 'sliding':
             chip_size = self.config.chip_size
             stride = chip_size
@@ -83,8 +84,11 @@ class ObjectDetection(Task):
                 chip_size, stride))
 
         # Make positive windows which contain labels.
-        pos_windows = make_pos_windows(raster_source.get_extent(), label_store,
-                                       self.config.chip_size, options)
+        pos_windows = make_pos_windows(raster_source.get_extent(),
+                                       label_store,
+                                       self.config.chip_size,
+                                       self.config.chip_options.window_method,
+                                       self.config.chip_options.label_buffer)
         nb_pos_windows = len(pos_windows)
 
         # Make negative windows which do not contain labels.
@@ -94,7 +98,7 @@ class ObjectDetection(Task):
         # so we cap the number of attempts.
         if nb_pos_windows:
             nb_neg_windows = round(
-                options.object_detection_options.neg_ratio * nb_pos_windows)
+                self.config.chip_options.neg_ratio * nb_pos_windows)
         else:
             nb_neg_windows = 100  # just make some
         max_attempts = 100 * nb_neg_windows
@@ -104,25 +108,25 @@ class ObjectDetection(Task):
 
         return pos_windows + neg_windows
 
-    def get_train_labels(self, window, scene, options):
-        window_labels = scene.ground_truth_label_store.get_labels(
+    def get_train_labels(self, window, scene):
+        window_labels = scene.ground_truth_label_source.get_labels(
             window=window)
         return ObjectDetectionLabels.get_overlapping(
             window_labels,
             window,
-            ioa_thresh=options.object_detection_options.ioa_thresh,
+            ioa_thresh=self.config.chip_options.ioa_thresh,
             clip=True)
 
-    def get_predict_windows(self, extent, options):
+    def get_predict_windows(self, extent):
         chip_size = self.config.chip_size
         stride = chip_size // 2
         return extent.get_windows(chip_size, stride)
 
-    def post_process_predictions(self, labels, options):
+    def post_process_predictions(self, labels):
         return ObjectDetectionLabels.prune_duplicates(
             labels,
-            score_thresh=options.object_detection_options.score_thresh,
-            merge_thresh=options.object_detection_options.merge_thresh)
+            score_thresh=self.config.predict_options.score_thresh,
+            merge_thresh=self.config.predict_options.merge_thresh)
 
     # def get_evaluation(self):
     #     return ObjectDetectionEvaluation()

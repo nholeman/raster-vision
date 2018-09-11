@@ -13,7 +13,13 @@ class AugmentorConfig:
 
     @staticmethod
     def builder(augmentor_type):
-        return rv._registry.get_config_builder(rv.AUGMENTOR, augmentor_type)()
+        return rv._registry.get_config_builder(rv.AUGMENTOR,
+                                               self.augmentor_type)(self)
+
+    @staticmethod
+    def builder(augmentor_type):
+        return rv._registry.get_config_builder(rv.AUGMENTOR,
+                                               augmentor_type)()
 
     @staticmethod
     def from_proto(msg):

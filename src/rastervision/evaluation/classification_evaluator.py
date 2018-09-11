@@ -2,7 +2,7 @@ from abc import (abstractmethod)
 
 from rastervision.evaluation import Evaluator
 
-class ChipClassificationEvaluator(Evaluator):
+class ClassificationEvaluator(Evaluator):
     """Evaluates predictions for a set of scenes.
     """
     def __init__(self, class_map, output_uri):

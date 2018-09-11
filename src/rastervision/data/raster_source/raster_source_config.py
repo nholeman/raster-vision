@@ -9,8 +9,11 @@ from rastervision.protos.raster_source2_pb2 import RasterSourceConfig as RasterS
 class RasterSourceConfig(Config):
     def __init__(self,
                  source_type,
-                 transformers=[],
+                 transformers=None,
                  channel_order=None):
+        if transformers is None:
+            transformers = []
+
         self.source_type = source_type
         self.transformers = transformers
         self.channel_order = channel_order
@@ -23,19 +26,20 @@ class RasterSourceConfig(Config):
                                     transformers=transformers)
         return msg
 
-    def builder(self):
-        return rv._registry.get_config_builder(rv.RASTER_SOURCE,
-                                               self.source_type)(self)
-
     @abstractmethod
     def create_source(self, tmp_dir):
         """Create the Raster Source for this configuration.
         """
         pass
 
+    def to_builder(self):
+        return rv._registry.get_config_builder(rv.RASTER_SOURCE,
+                                               self.source_type)(self)
+
     @staticmethod
     def builder(source_type):
-        return rv._registry.get_config_builder(rv.RASTER_SOURCE, source_type)()
+        return rv._registry.get_config_builder(rv.RASTER_SOURCE,
+                                               source_type)()
 
     @staticmethod
     def from_proto(msg):
@@ -48,15 +52,15 @@ class RasterSourceConfig(Config):
     def create_transformers(self):
         return list(map(lambda c: c.create_transformer(), self.transformers))
 
-    def preprocess_command(self, command_type, experiment_config):
-        io_def = CommandIODefinition()
+    def preprocess_command(self, command_type, experiment_config, context=None):
+        io_def = rv.core.CommandIODefinition()
         new_transformers = []
         for transformer in self.transformers:
-            t, sub_io_def = transformer.preprocess_command(command_type, experiment_config)
+            t, sub_io_def = transformer.preprocess_command(command_type, experiment_config, context)
             new_transformers.append(t)
             io_def.merge(sub_io_def)
 
-        conf = self.builder() \
+        conf = self.to_builder() \
                    .with_transformers(new_transformers) \
                    .build()
 

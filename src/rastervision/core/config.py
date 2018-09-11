@@ -37,7 +37,7 @@ def set_nested_keys(target, mods, ignore_missing_keys):
 
 class Config(ABC):
     @abstractmethod
-    def builder(self):
+    def to_builder(self):
         """Return a builder based on this config.
         """
         pass
@@ -52,11 +52,11 @@ class Config(ABC):
     def preprocess_command(self,
                            command_type,
                            experiment_config,
-                           context=[]):
+                           context=None):
         """Returns a copy of this config which may or may not have
            been modified based on the command needs and the experiment
            configuration, as well as the IO definitions this configuration
-           contributes to the command.
+           contributes to the command. [TODO: Reword]
 
            Args:
               command_type: The command type that is currently being preprocessed.
@@ -87,11 +87,12 @@ class Config(ABC):
     @abstractmethod
     def from_proto(msg):
         """Creates a Config from the specificed protobuf message
+        TODO: Allow loading from file uri or dict
         """
         pass
 
 class ConfigBuilder(ABC):
-    def __init__(self, config_class, config={}):
+    def __init__(self, config_class, config=None):
         """Construct a builder.
 
            Args:
@@ -100,6 +101,9 @@ class ConfigBuilder(ABC):
                      into the __init__ method of config_class to build the configuration.
                      This config is modified with the fluent builder methods.
         """
+        if config is None:
+            config = {}
+
         self.config_class = config_class
         self.config = config
 

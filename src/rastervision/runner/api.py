@@ -1,4 +1,6 @@
 # Registry keys
 
-LOCAL_RUNNER = "LOCAL_RUNNER"
-AWS_BATCH_RUNNER = "AWS_BATCH_RUNNER"
+LOCAL = "LOCAL"
+AWS_BATCH = "AWS_BATCH"
+
+from rastervision.runner.experiment_runner import ExperimentRunner

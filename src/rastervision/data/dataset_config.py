@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+import rastervision as rv
 from rastervision.augmentor import AugmentorConfig
 from rastervision.data import SceneConfig
 from rastervision.core.config  import (Config, ConfigBuilder)
@@ -7,10 +8,19 @@ from rastervision.protos.dataset_pb2 import DatasetConfig as DatasetConfigMsg
 
 class DatasetConfig(Config):
     def __init__(self,
-                 train_scenes=[],
-                 validation_scenes=[],
-                 test_scenes=[],
-                 augmentors=[]):
+                 train_scenes=None,
+                 validation_scenes=None,
+                 test_scenes=None,
+                 augmentors=None):
+        if train_scenes is None:
+            train_scenes = []
+        if validation_scenes is None:
+            validation_scenes = []
+        if test_scenes is None:
+            test_scenes = []
+        if augmentors is None:
+            augmentors = []
+
         self.train_scenes = train_scenes
         self.validation_scenes = validation_scenes
         self.test_scenes = test_scenes
@@ -18,10 +28,10 @@ class DatasetConfig(Config):
 
     def all_scenes(self):
         return self.train_scenes + \
-            self.validation_sceness + \
+            self.validation_scenes + \
             self.test_scenes
 
-    def builder(self):
+    def to_builder(self):
         return DatasetConfigBuilder(self)
 
     def create_dataset(self,
@@ -38,7 +48,7 @@ class DatasetConfig(Config):
         val_scenes = []
         if include_val:
             val_scenes = list(map(lambda x: x.create_scene(task_config, tmp_dir),
-                                  self.validaiton_scenes))
+                                  self.validation_scenes))
 
         test_sceness = []
         if include_test:
@@ -71,59 +81,72 @@ class DatasetConfig(Config):
                                 test_scenes=test_scenes,
                                 augmentors = augmentors)
 
-    def preprocess_command(self, command_type, experiment_config, context=[]):
-        io_def = CommandIODefinition()
-        train_scenes = []
-        for scene in self.train_scenes:
-            (scene_io_def, new_config) = scene.process_experiment_for_command(command_type,
-                                                                              experiment_config,
-                                                                              context)
-            io_def.merge(scene_io_def)
-            train_scenes.append(new_config)
+    def preprocess_command(self, command_type, experiment_config, context=None):
+        io_def = rv.core.CommandIODefinition()
 
-        val_scenes = []
-        for scene in self.validation_scenes:
-            if command_type == rv.PREDICT:
-                # Ensure there is a label store associated with predict and validation scenes.
-                if not scene.label_store:
-                    scene = scene.builder() \
-                                 .with_task(experiment_config.task) \
-                                 .with_label_store() \
-                                 .build()
-            (scene_io_def, new_config) = scene.preprocess_command(command_type,
-                                                                  experiment_config,
-                                                                  context)
-            io_def.merge(scene_io_def)
-            val_scenes.append(new_config)
+        if command_type in [rv.ANALYZE, rv.CHIP]:
+            train_scenes = []
+            for scene in self.train_scenes:
+                (new_config, scene_io_def) = scene.preprocess_command(command_type,
+                                                                      experiment_config,
+                                                                      context)
+                io_def.merge(scene_io_def)
+                train_scenes.append(new_config)
+        else:
+            train_scenes = self.train_scenes
 
-        predict_scenes = []
-        for scene in self.predict_scenes:
-            if command_type == rv.PREDICT:
-                # Ensure there is a label store associated with predict and validation scenes.
-                if not scene.label_store:
-                    scene = scene.builder() \
-                                 .with_task(experiment_config.task) \
-                                 .with_label_store() \
-                                 .build()
-            (scene_io_def, new_config) = scene.preprocess_command(command_type,
-                                                                  experiment_config,
-                                                                  context)
-            io_def.merge(scene_io_def)
-            predict_scenes.append(new_config)
+        if command_type in [rv.ANALYZE, rv.CHIP, rv.PREDICT, rv.EVAL]:
+            val_scenes = []
+            for scene in self.validation_scenes:
+                if command_type == rv.PREDICT:
+                    # Ensure there is a label store associated with predict and validation scenes.
+                    if not scene.label_store:
+                        scene = scene.to_builder() \
+                                     .with_task(experiment_config.task) \
+                                     .with_label_store() \
+                                     .build()
+                (new_config, scene_io_def) = scene.preprocess_command(command_type,
+                                                                      experiment_config,
+                                                                      context)
+                io_def.merge(scene_io_def)
+                val_scenes.append(new_config)
+        else:
+            val_scenes = self.validation_scenes
 
-        augmentors = []
-        for augmentor in self.augmentors:
-            (aug_io_def, new_config) = augmentor.preprocess_command(command_type,
-                                                                    experiment_config,
-                                                                    context)
-            io_def.merge(aug_io_def)
-            augmentors.append(new_config)
+        if command_type in [rv.PREDICT, rv.EVAL]:
+            test_scenes = []
+            for scene in self.test_scenes:
+                if command_type == rv.PREDICT:
+                    # Ensure there is a label store associated with predict and validation scenes.
+                    if not scene.label_store:
+                        scene = scene.to_builder() \
+                                     .with_task(experiment_config.task) \
+                                     .with_label_store() \
+                                     .build()
+                (new_config, scene_io_def) = scene.preprocess_command(command_type,
+                                                                      experiment_config,
+                                                                      context)
+                io_def.merge(scene_io_def)
+                test_scenes.append(new_config)
+        else:
+            test_scenes = self.test_scenes
 
-        conf = self.builder().with_train_scenes(train_scenes) \
-                             .with_val_scenes(val_scenes) \
-                             .with_predict_scenes(predict_scenes) \
-                             .with_augmentors(augmentors) \
-                             .build()
+        if command_type == rv.CHIP:
+            augmentors = []
+            for augmentor in self.augmentors:
+                (new_config, aug_io_def) = augmentor.preprocess_command(command_type,
+                                                                        experiment_config,
+                                                                        context)
+                io_def.merge(aug_io_def)
+                augmentors.append(new_config)
+        else:
+            augmentors = self.augmentors
+
+        conf = self.to_builder().with_train_scenes(train_scenes) \
+                                .with_validation_scenes(val_scenes) \
+                                .with_test_scenes(test_scenes) \
+                                .with_augmentors(augmentors) \
+                                .build()
 
         return (conf, io_def)
 

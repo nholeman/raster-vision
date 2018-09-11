@@ -2,10 +2,9 @@ import subprocess
 import os
 import rasterio
 
-from rastervision.data.raster_source.rasterio_source import (
-    RasterioRasterSource)
-from rastervision.data.crs_transformer.identity_crs_transformer import (
-    IdentityCRSTransformer)
+from rastervision.data.raster_source.rasterio_source \
+    import RasterioRasterSource
+from rastervision.data.crs_transformer import RasterioCRSTransformer
 from rastervision.utils.files import download_if_needed
 
 

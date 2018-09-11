@@ -9,51 +9,44 @@ class Backend(ABC):
     """
 
     @abstractmethod
-    def process_scene_data(self, scene, data, class_map, options):
+    def process_scene_data(self, scene, data):
         """Process each scene's training data
 
         Args:
             scene: Scene
             data: TrainingData
-            class_map: ClassMap
-            options: MakeChipsConfig.Options
 
         Returns:
-            backend-specific data-structures consumed by ml_backend's
+            backend-specific data-structures consumed by backend's
             process_sceneset_results
         """
         pass
 
     @abstractmethod
-    def process_sceneset_results(self, training_results, validation_results,
-                                 class_map, options):
+    def process_sceneset_results(self,
+                                 training_results,
+                                 validation_results):
         """After all scenes have been processed, process the resultset
 
         Args:
             training_results: dependent on the ml_backend's process_scene_data
             validation_results: dependent on the ml_backend's
                 process_scene_data
-            class_map: ClassMap
-            options: MakeChipsConfig.Options
         """
         pass
 
     @abstractmethod
-    def train(self, options):
+    def train(self):
         """Train a model.
-
-        Args:
-            options: TrainConfig.Options
         """
         pass
 
     @abstractmethod
-    def predict(self, chips, windows, options):
+    def predict(self, chips, windows):
         """Return predictions for a chip using model.
 
         Args:
             chips: [[height, width, channels], ...] numpy array of chips
             windows: List of boxes that are the windows aligned with the chips.
-            options: PredictConfig.Options
         """
         pass

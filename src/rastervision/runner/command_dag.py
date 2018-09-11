@@ -1,5 +1,8 @@
 import networkx as nx
 
+import rastervision as rv
+from rastervision.utils.files import file_exists
+
 class CommandDAG:
     """ A directed acyclic graph of command definitions.
     """
@@ -12,7 +15,7 @@ class CommandDAG:
         """
         # Create a set of edges, from input_uri to command_config and
         # from command_config to output_uri. Nodes for commands are their
-        # index into unique_commands.
+        # index into command_definitions.
 
         uri_dag = nx.DiGraph()
 
@@ -46,29 +49,31 @@ class CommandDAG:
         for idx in [idx
                     for idx in uri_dag.nodes
                     if (type(idx) == int and
-                        unique_commands[idx][1].command_type in commands_not_to_rerun)]:
-            for output_uri in [output_uri
-                               for output_uri in dag.out_edges(idx)
-                               if file_exists(output_uri)]:
+                        command_definitions[idx].command_config.command_type
+                        in commands_to_not_rerun)]:
+            for output_uri in [edge[1]
+                               for edge in uri_dag.out_edges(idx)
+                               if file_exists(edge[1])]:
                 uri_dag.remove_edge(idx, output_uri)
-            if len(dag.out_edges(idx)) == 0:
+            if len(uri_dag.out_edges(idx)) == 0:
                 uri_dag.remove_node(idx)
 
         # Collapse the graph to create edges from command to command.
         command_id_dag = nx.DiGraph()
+
         for idx in [idx
                     for idx in uri_dag.nodes
                     if (type(idx) == int)]:
-            command_dag.add_node(idx)
-            for upstream_idx in [upstream_idx
-                                 for input_uri in uri_dag.in_edges(idx)
-                                 for upstream_idx in uri_dag.in_edges(input_uri)]:
-                command_dag.add_edge(upstream_dx, idx)
+            command_id_dag.add_node(idx)
+            for upstream_idx in [edge2[0]
+                                 for edge1 in uri_dag.in_edges(idx)
+                                 for edge2 in uri_dag.in_edges(edge1[0])]:
+                command_id_dag.add_edge(upstream_idx, idx)
 
         # Feed this digraph of commands to the child runner.
 
         self.command_definitions = command_definitions
-        self.command_id_dag
+        self.command_id_dag = command_id_dag
 
     def get_sorted_commands(self):
         """Return a topologically sorted list of commands configurations.

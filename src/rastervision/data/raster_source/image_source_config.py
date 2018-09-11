@@ -11,7 +11,7 @@ from rastervision.utils.files import file_exists
 class ImageSourceConfig(RasterSourceConfig):
     def __init__(self,
                  uri,
-                 transformers=[],
+                 transformers=None,
                  channel_order=None):
         super().__init__(source_type=rv.IMAGE_SOURCE,
                          transformers=transformers,
@@ -27,7 +27,7 @@ class ImageSourceConfig(RasterSourceConfig):
         transformers = self.create_transformers()
         return ImageSource(self.uri, transformers, tmp_dir, self.channel_order)
 
-    def preprocess_command(self, command_type, experiment_config, context=[]):
+    def preprocess_command(self, command_type, experiment_config, context=None):
         (conf, io_def) = super().preprocess_command(command_type, experiment_config)
         io_def.add_input(self.uri)
 

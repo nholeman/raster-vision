@@ -13,9 +13,14 @@ class RasterTransformerConfig(Config):
         """
         pass
 
+    def to_builder(self):
+        return rv._registry.get_config_builder(rv.RASTER_TRANSFORMER,
+                                               self.transformer_type)(self)
+
     @staticmethod
     def builder(transformer_type):
-        return rv._registry.get_config_builder(rv.RASTER_TRANSFORMER, transformer_type)()
+        return rv._registry.get_config_builder(rv.RASTER_TRANSFORMER,
+                                               transformer_type)()
 
     @staticmethod
     def from_proto(msg):

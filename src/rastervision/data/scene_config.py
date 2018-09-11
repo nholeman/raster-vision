@@ -36,16 +36,17 @@ class SceneConfig(Config):
                                                            tmp_dir)
         label_store = None
         if self.label_store:
-            label_store = self.label_source.create_store(task_config,
-                                                         raster_source.get_crs_transformer(),
-                                                         tmp_dir)
+            label_store = self.label_store.create_store(task_config,
+                                                        raster_source.get_crs_transformer(),
+                                                        tmp_dir)
         return Scene(self.scene_id,
                      raster_source,
                      label_source,
                      label_store)
 
     def to_proto(self):
-        msg = SceneConfigMsg( raster_source = self.raster_source.to_proto())
+        msg = SceneConfigMsg(id=self.scene_id,
+                             raster_source = self.raster_source.to_proto())
 
         if self.label_source:
             msg.ground_truth_label_source.CopyFrom(self.label_source.to_proto())
@@ -53,14 +54,16 @@ class SceneConfig(Config):
             msg.prediction_label_store.CopyFrom(self.label_store.to_proto())
         return msg
 
-    def builder(self):
+    def to_builder(self):
         return SceneConfigBuilder(self)
 
-    def preprocess_command(self, command_type, experiment_config, context=[]):
+    def preprocess_command(self, command_type, experiment_config, context=None):
+        if context is None:
+            context = []
         context = context + [self]
         io_def = rv.core.CommandIODefinition()
 
-        b = self.builder()
+        b = self.to_builder()
 
         (new_raster_source,
          sub_io_def) = self.raster_source.preprocess_command(command_type,
@@ -145,7 +148,7 @@ class SceneConfigBuilder(ConfigBuilder):
         b = deepcopy(self)
         if isinstance(raster_source, RasterSourceConfig):
             if channel_order is not None:
-                b.config['raster_source'] = raster_source.builder() \
+                b.config['raster_source'] = raster_source.to_builder() \
                                                          .with_channel_order(channel_order) \
                                                          .build()
             else:
@@ -184,7 +187,7 @@ class SceneConfigBuilder(ConfigBuilder):
 
         return b
 
-    def with_label_store(self, label_store: Union[str, LabelStoreConfig, None]):
+    def with_label_store(self, label_store: Union[str, LabelStoreConfig, None]=None):
         """
         Sets the raster store for this scene.
 
@@ -198,21 +201,20 @@ class SceneConfigBuilder(ConfigBuilder):
            A task must be set with `with_task` before calling this, if calling
            with a string.
         """
-        # TODO
         b = deepcopy(self)
-        if isinstance(label_source, LabelSourceConfig):
-            b.config['label_source'] = label_source
-        elif isinstance(label_source, str):
+        if isinstance(label_store, LabelStoreConfig):
+            b.config['label_store'] = label_store
+        elif isinstance(label_store, str):
             if not self.task:
                 raise rv.ConfigError("You must set a task with '.with_task' before "
-                                     "creating a default label store for {}".format(label_source))
-            provider = rv._registry.get_default_label_source_provider(self.task.task_type, label_source)
-            b.config['label_source'] = provider.construct(label_source)
+                                     "creating a default label store for {}".format(label_store))
+            provider = rv._registry.get_default_label_store_provider(self.task.task_type, label_store)
+            b.config['label_store'] = provider.construct(label_store)
         else:
             if not self.task:
                 raise rv.ConfigError("You must set a task with '.with_task' before "
-                                     "creating a default label store for {}".format(label_source))
-            provider = rv._registry.get_default_label_source_provider(self.task.task_type)
-            b.config['label_source'] = provider.construct()
+                                     "creating a default label store.")
+            provider = rv._registry.get_default_label_store_provider(self.task.task_type)
+            b.config['label_store'] = provider.construct()
 
         return b

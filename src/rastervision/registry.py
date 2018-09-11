@@ -2,8 +2,6 @@ import rastervision as rv
 from rastervision.task.object_detection_config import ObjectDetectionConfigBuilder
 from rastervision.task.chip_classification_config import ChipClassificationConfigBuilder
 from rastervision.backend.tf_object_detection_config import TFObjectDetectionConfigBuilder
-from rastervision.data.raster_transformer.channel_transformer_config \
-    import ChannelTransformerConfigBuilder
 from rastervision.data.raster_transformer.stats_transformer_config \
     import StatsTransformerConfigBuilder
 from rastervision.data.raster_source.default import (DefaultGeoTiffSourceProvider,
@@ -12,6 +10,8 @@ from rastervision.data.label_source.default import (DefaultObjectDetectionGeoJSO
                                                     DefaultChipClassificationGeoJSONSourceProvider)
 from rastervision.data.label_store.default import (DefaultObjectDetectionGeoJSONStoreProvider,
                                                    DefaultChipClassificationGeoJSONStoreProvider)
+from rastervision.evaluation.default import (DefaultObjectDetectioneEvaluatorProvider,
+                                             DefaultChipClassificationEvaluatorProvider)
 from rastervision.protos.task_pb2 import TaskConfig
 
 class RegistryError(Exception):
@@ -44,42 +44,57 @@ class Registry:
             # (rv.LABEL_SOURCE,
             #  rv.CHIP_CLASSIFICATION_GEOJSON): rv.data.ChipClassificationGeoJSONSourceConfigBuilder,
 
+            # Label Stores
+            (rv.LABEL_STORE,
+             rv.OBJECT_DETECTION_GEOJSON): rv.data.ObjectDetectionGeoJSONStoreConfigBuilder,
+
             # Analyzers
-            # TODO
+            (rv.ANALYZER,
+             rv.STATS_ANALYZER): rv.analyzer.StatsAnalyzerConfigBuilder,
 
             # Augmentors
-            # TODO
+            (rv.AUGMENTOR,
+             rv.NODATA_AUGMENTOR): rv.augmentor.NodataAugmentorConfigBuilder,
 
             # Evaluators
-            # TODO
+            (rv.EVALUATOR,
+             rv.CHIP_CLASSIFICATION_EVALUATOR): rv.evaluation.ChipClassificationEvaluatorConfigBuilder,
+            (rv.EVALUATOR,
+             rv.OBJECT_DETECTION_EVALUATOR): rv.evaluation.ObjectDetectionEvaluatorConfigBuilder,
         }
 
-        self._internal_raster_sources = [
+        self._internal_default_raster_sources = [
             DefaultGeoTiffSourceProvider,
             # This is the catch-all case, ensure it's on the bottom of the search stack.
             DefaultImageSourceProvider
         ]
 
-        self._internal_label_sources = [
+        self._internal_default_label_sources = [
             DefaultObjectDetectionGeoJSONSourceProvider,
             DefaultChipClassificationGeoJSONSourceProvider
         ]
 
-        self._internal_label_stores = [
+        self._internal_default_label_stores = [
             DefaultObjectDetectionGeoJSONStoreProvider,
             DefaultChipClassificationGeoJSONStoreProvider
         ]
 
+        self._internal_default_evaluators = [
+            DefaultObjectDetectioneEvaluatorProvider,
+            DefaultChipClassificationEvaluatorProvider
+        ]
+
         self.command_config_builders = {
             rv.ANALYZE: rv.command.AnalyzeCommandConfigBuilder,
-            # rv.CHIP: rv.command.ChipCommandConfigBuilder,
-            # rv.TRAIN: rv.command.TrainCommandConfigBuilder,
-            # rv.PREDICT: rv.command.PredictCommandConfigBuilder,
-            # rv.EVAL: rv.command.EvalCommandConfigBuilder
+            rv.CHIP: rv.command.ChipCommandConfigBuilder,
+            rv.TRAIN: rv.command.TrainCommandConfigBuilder,
+            rv.PREDICT: rv.command.PredictCommandConfigBuilder,
+            rv.EVAL: rv.command.EvalCommandConfigBuilder
         }
 
         self.experiment_runners = {
-            rv.LOCAL_RUNNER: rv.runner.LocalExperimentRunner
+            rv.LOCAL: rv.runner.LocalExperimentRunner,
+            rv.AWS_BATCH: rv.runner.LocalExperimentRunner
         }
 
     def get_config_builder(self, group, key):
@@ -96,7 +111,7 @@ class Registry:
         """
         Gets the DefaultRasterSourceProvider for a given input string.
         """
-        for provider in self._internal_raster_sources:
+        for provider in self._internal_default_raster_sources:
             if provider.handles(s):
                 return provider
 
@@ -108,7 +123,7 @@ class Registry:
         """
         Gets the DefaultRasterSourceProvider for a given input string.
         """
-        for provider in self._internal_label_sources:
+        for provider in self._internal_default_label_sources:
             if provider.handles(task_type, s):
                 return provider
 
@@ -121,7 +136,7 @@ class Registry:
         """
         Gets the DefaultRasterSourceProvider for a given input string.
         """
-        for provider in self._internal_label_sources:
+        for provider in self._internal_default_label_stores:
             if s:
                 if provider.handles(task_type, s):
                     return provider
@@ -131,15 +146,28 @@ class Registry:
 
         # TODO: Search plugins
 
-        raise RegistryError("No DefaultLabelStoreProvider "
-                            "found for {} and task type {}".format(s, task_type))
+        if s:
+            raise RegistryError("No DefaultLabelStoreProvider "
+                                "found for {} and task type {}".format(s, task_type))
+        else:
+            raise RegistryError("No DefaultLabelStoreProvider "
+                                "found for task type {}".format(task_type))
 
-    def get_default_evaluator(self, task_type):
-        # TODO
-        pass
+    def get_default_evaluator_provider(self, task_type):
+        """
+        Gets the DefaultEvaluatorProvider for a given task
+        """
+        for provider in self._internal_default_evaluators:
+            if provider.is_default_for(task_type):
+                return provider
+
+        # TODO: Search plugins
+
+        raise RegistryError("No DefaultEvaluatorProvider "
+                            "found for task type {}".format(task_type))
 
     def get_command_config_builder(self, command_type):
-        builder = self.command_config_builder.get(command_type)
+        builder = self.command_config_builders.get(command_type)
         if not builder:
             raise RegistryError("No command found for type {}".format(command_type))
         return builder
@@ -150,4 +178,4 @@ class Registry:
             # TODO: Search plugins
             raise RegistryError("No experiment runner for type {}".format(runner_type))
 
-        return experiment_runner
+        return runner()

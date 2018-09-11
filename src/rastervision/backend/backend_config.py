@@ -35,9 +35,14 @@ class BackendConfig(Config):
         """
         pass
 
+    def to_builder(self):
+        return rv._registry.get_config_builder(rv.BACKEND,
+                                               self.backend_type)(self)
+
     @staticmethod
     def builder(backend_type):
-        return rv._registry.get_config_builder(rv.BACKEND, backend_type)()
+        return rv._registry.get_config_builder(rv.BACKEND,
+                                               backend_type)()
 
     @staticmethod
     def from_proto(msg):
@@ -48,7 +53,9 @@ class BackendConfig(Config):
                            .build()
 
 class BackendConfigBuilder(ConfigBuilder):
-    def __init__(self, backend_type, config_class, config={}, prev=None):
+    def __init__(self, backend_type, config_class, config=None, prev=None):
+        if config is None:
+            config = {}
         if prev:
             config['train_options'] = prev.train_options
         super().__init__(config_class, config)

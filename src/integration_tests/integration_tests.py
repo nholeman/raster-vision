@@ -13,9 +13,7 @@ import tensorflow
 import rastervision as rv
 import rastervision.workflows.chain as chain_workflow
 
-CLASSIFICATION = 'classification'
-OBJECT_DETECTION = 'object-detection'
-all_tests = [CLASSIFICATION, OBJECT_DETECTION]
+all_tests = [rv.CHIP_CLASSIFICATION, rv.OBJECT_DETECTION]
 
 np.random.seed(1234)
 tensorflow.set_random_seed(5678)
@@ -123,14 +121,26 @@ def check_eval(test, temp_dir):
     return errors
 
 
+def get_experiment(test, tmp_dir):
+    if test == rv.OBJECT_DETECTION:
+        return ObjectDetectionIntegrationTest().exp_main(tmp_dir)
+
+    raise Exception("Unknown test {}".format(test))
+
 def run_test(test, temp_dir):
     errors = []
     tasks = []
-    workflow_path = setup_test(test, temp_dir)
+    experiment = get_experiment(test, temp_dir)
+    # workflow_path = setup_test(test, temp_dir)
 
-    # Check that running workflow doesn't raise any exceptions.
+    # Check serialization
+    msg = experiment.to_proto()
+    experiment = rv.ExperimentConfig.from_proto(msg)
+
+    # Check that running doesn't raise any exceptions.
     try:
-        chain_workflow._main(workflow_path, tasks, run=True)
+        # chain_workflow._main(workflow_path, tasks, run=True)
+        rv.ExperimentRunner.get_runner(rv.LOCAL).run(e2)
     except Exception as exc:
         errors.append(
             TestError(test, 'raised an exception while running',
@@ -143,33 +153,33 @@ def run_test(test, temp_dir):
     return errors
 
 
-# @click.command()
-# @click.argument('tests', nargs=-1)
-# def main(tests):
-#     """Runs RV end-to-end and checks that evaluation metrics are correct."""
-#     if len(tests) == 0:
-#         tests = all_tests
+@click.command()
+@click.argument('tests', nargs=-1)
+def main(tests):
+    """Runs RV end-to-end and checks that evaluation metrics are correct."""
+    if len(tests) == 0:
+        tests = all_tests
 
-#     with TemporaryDirectory() as temp_dir:
-#         errors = []
-#         for test in tests:
-#             if test not in all_tests:
-#                 print('{} is not a valid test.'.format(test))
-#                 return
+    with TemporaryDirectory() as temp_dir:
+        errors = []
+        for test in tests:
+            if test not in all_tests:
+                print('{} is not a valid test.'.format(test))
+                return
 
-#             errors.extend(run_test(test, temp_dir))
+            errors.extend(run_test(test, temp_dir))
 
-#             for error in errors:
-#                 print(error)
+            for error in errors:
+                print(error)
 
-#         for test in tests:
-#             nb_test_errors = len(
-#                 list(filter(lambda error: error.test == test, errors)))
-#             if nb_test_errors == 0:
-#                 print('{} test passed!'.format(test))
+        for test in tests:
+            nb_test_errors = len(
+                list(filter(lambda error: error.test == test, errors)))
+            if nb_test_errors == 0:
+                print('{} test passed!'.format(test))
 
-#         if errors:
-#             exit(1)
+        if errors:
+            exit(1)
 
 def main():
     # TODO: Integrate with everything else
@@ -182,7 +192,7 @@ def main():
         msg = e.to_proto()
         open("/opt/src/rv-experiment-serialized.json", 'w').write(json_format.MessageToJson(msg))
         e2 = rv.ExperimentConfig.from_proto(msg)
-#    rv.runner.ExperimentRunner.run_experiment
+        rv.ExperimentRunner.get_runner(rv.LOCAL).run(e2)
 
 
 if __name__ == '__main__':

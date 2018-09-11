@@ -17,9 +17,6 @@ class StatsTransformerConfig(RasterTransformerConfig):
                                          stats_uri=self.stats_uri)
         return msg
 
-    def builder(self):
-        return StatsTransformerConfigBuilder(self)
-
     def create_transformer(self):
         return StatsTransformer(RasterStats.load(self.stats_uri))
 
@@ -32,9 +29,9 @@ class StatsTransformerConfig(RasterTransformerConfig):
                 for analyzer in experiment_config.analyzers:
                     if analyzer.analyzer_type == rv.STATS_ANALYZER:
                         stats_uri = analyzer.stats_uri
-                        conf = conf = self.builder() \
-                                          .with_stats_uri(stats_uri) \
-                                          .build()
+                        conf = self.to_builder() \
+                                   .with_stats_uri(stats_uri) \
+                                   .build()
             if not self.stats_uri:
                 io_def.add_missing("StatsTransformerConfig is missing 'stats_uri' property. "
                                    "This must be set on the configuration, or a "

@@ -13,8 +13,8 @@ class AnalyzeCommandConfig(CommandConfig):
                  task,
                  scenes,
                  analyzers):
-        super().__init__(self, rv.ANALYZE)
-        self.task_config = task
+        super().__init__(rv.ANALYZE)
+        self.task = task
         self.scenes = scenes
         self.analyzers = analyzers
 
@@ -47,20 +47,20 @@ class AnalyzeCommandConfig(CommandConfig):
 
 class AnalyzeCommandConfigBuilder(CommandConfigBuilder):
     def __init__(self):
-        self.task_config = None
-        self.scene_configs = None
-        self.analyzer_configs = None
+        self.task = None
+        self.scenes = None
+        self.analyzers = None
 
     def build(self):
-        if self.task_config is None:
+        if self.task is None:
             raise rv.ConfigError("task not set. Use with_task or with_experiment")
         if self.scenes is None:
             raise rv.ConfigError("scenes not set. Use with_scenes or with_experiment")
         if self.analyzers is None:
             raise rv.ConfigError("analyzers not set. Use with_analyzers or with_experiment")
-        return AnalyzerCommandConfig(self.task_config,
-                                     self.scene_configs,
-                                     self.analyzer_configs)
+        return AnalyzeCommandConfig(self.task,
+                                    self.scenes,
+                                    self.analyzers)
 
 
     def from_proto(self, msg):
@@ -85,16 +85,16 @@ class AnalyzeCommandConfigBuilder(CommandConfigBuilder):
         return  b
 
     def with_task(self, task):
-        b = deepcopy(b)
-        b.task_config = task
+        b = deepcopy(self)
+        b.task = task
         return b
 
     def with_scenes(self, scenes):
-        b = deepcopy(b)
-        b.scene_configs = scenes
+        b = deepcopy(self)
+        b.scenes = scenes
         return b
 
     def with_analyzers(self, analyzers):
-        b = deepcopy(b)
-        b.analyzer_configs = analyzers
+        b = deepcopy(self)
+        b.analyzers = analyzers
         return b

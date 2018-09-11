@@ -2,6 +2,7 @@ from rastervision.protos.model_config_pb2 import ModelConfig
 
 from rastervision.core import ConfigError
 from rastervision.analyzer.api import *
+from rastervision.augmentor.api import *
 from rastervision.backend.api import *
 from rastervision.command.api import *
 from rastervision.data.api import *

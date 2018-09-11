@@ -17,5 +17,5 @@ class Scene():
         """
         self.scene_id = scene_id
         self.raster_source = raster_source
-        self.ground_truth_label_store = ground_truth_label_store
+        self.ground_truth_label_source = ground_truth_label_source
         self.prediction_label_store = prediction_label_store

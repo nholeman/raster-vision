@@ -20,15 +20,12 @@ class StatsAnalyzerConfig(AnalyzerConfig):
             msg.SetField("stats_uri", self.stats_uri)
         return msg
 
-    def builder(self):
-        return StatsAnalyzerConfigBuilder(self)
-
     def preprocess_command(self, command_type, experiment_config, context=[]):
         conf = self
         if command_type == rv.ANALYZE:
             if not self.stats_uri:
                 stats_uri = os.path.join(experiment_config.analyze_uri, "stats.json")
-                conf = self.builder() \
+                conf = self.to_builder() \
                            .with_stats_uri(stats_uri) \
                            .build()
         io_def = rv.core.CommandIODefinition(output_uris=[self.stats_uri])

@@ -4,9 +4,10 @@ from typing import (List, Dict, Tuple, Union)
 import rastervision as rv
 from rastervision.task import ObjectDetection
 from rastervision.core.class_map import (ClassMap, ClassItem)
-from .task_config import (TaskConfig, TaskConfigBuilder)
-from rastervision.task.util import (construct_class_map, classes_to_class_items)
-from ..protos.task_pb2 import TaskConfig as TaskConfigMsg
+from rastervision.task import (TaskConfig, TaskConfigBuilder)
+from rastervision.task.utils import (construct_class_map, classes_to_class_items)
+from rastervision.protos.task_pb2 import TaskConfig as TaskConfigMsg
+from rastervision.protos.class_item_pb2 import ClassItem as ClassItemMsg
 
 class ObjectDetectionConfig(TaskConfig):
     class ChipOptions:
@@ -29,10 +30,11 @@ class ObjectDetectionConfig(TaskConfig):
 
     def __init__(self,
                  class_map,
+                 predict_batch_size=10,
                  chip_size=300,
                  chip_options=ChipOptions(),
                  predict_options=PredictOptions()):
-        super().__init__(rv.OBJECT_DETECTION)
+        super().__init__(rv.OBJECT_DETECTION, predict_batch_size)
         self.class_map = class_map
         self.chip_size = chip_size
         self.chip_options = chip_options
@@ -40,9 +42,6 @@ class ObjectDetectionConfig(TaskConfig):
 
     def create_task(self, backend):
         return ObjectDetection(self, backend)
-
-    def builder(self):
-        return ObjectDetectionConfigBuilder(self)
 
     def to_proto(self):
         chip_options = TaskConfigMsg.ObjectDetectionConfig.ChipOptions(
@@ -60,13 +59,18 @@ class ObjectDetectionConfig(TaskConfig):
                                                    chip_options=chip_options,
                                                    predict_options=predict_options)
         return TaskConfigMsg(task_type=rv.OBJECT_DETECTION,
+                             predict_batch_size=self.predict_batch_size,
                              object_detection_config=conf)
+
+    def preprocess_command(self, command_type, experiment_config, context=None):
+        return (self, rv.core.CommandIODefinition())
 
 class ObjectDetectionConfigBuilder(TaskConfigBuilder):
     def __init__(self, prev=None):
         config = {}
         if prev:
-            config = { "class_map": prev.class_map,
+            config = { "predict_batch_size": prev.predict_batch_size,
+                       "class_map": prev.class_map,
                        "chip_size": prev.chip_size,
                        "chip_options": prev.chip_options,
                        "predict_options": prev.predict_options }
@@ -77,6 +81,7 @@ class ObjectDetectionConfigBuilder(TaskConfigBuilder):
         b = ObjectDetectionConfigBuilder()
 
         return b.with_classes(list(conf.class_items)) \
+                .with_predict_batch_size(msg.predict_batch_size) \
                 .with_chip_size(conf.chip_size) \
                 .with_chip_options(neg_ratio=conf.chip_options.neg_ratio,
                                    ioa_thresh=conf.chip_options.ioa_thresh,
@@ -87,7 +92,7 @@ class ObjectDetectionConfigBuilder(TaskConfigBuilder):
 
     def with_classes(self, classes: Union[ClassMap,
                                           List[str],
-                                          List[TaskConfigMsg.ClassItem],
+                                          List[ClassItemMsg],
                                           List[ClassItem],
                                           Dict[str, int],
                                           Dict[str, Tuple[int, str]]]):

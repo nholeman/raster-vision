@@ -1,13 +1,13 @@
 from typing import (List, Dict, Tuple, Union)
 
-from rastervision.protos.task_pb2 import TaskConfig
+from rastervision.protos.class_item_pb2 import ClassItem as ClassItemMsg
 from rastervision.core.class_map import (ClassItem, ClassMap)
 
 # TODO: Unit test
 
 def construct_class_map(classes: Union[ClassMap,
                                      List[str],
-                                     List[TaskConfig.ClassItem],
+                                     List[ClassItemMsg],
                                      List[ClassItem],
                                      Dict[str, int],
                                      Dict[str, Tuple[int, str]]]) -> ClassMap:
@@ -18,7 +18,7 @@ def construct_class_map(classes: Union[ClassMap,
             classes: One of the following:
                      - a ClassMap
                      - a list of class names
-                     - a list of TaskConfig.ClassItem protobuf messages
+                     - a list of ClassItem protobuf messages
                      - a list of ClassItems
                      - a dict which maps class names to class ids
                      - a dict which maps class names to a tuple of
@@ -42,7 +42,7 @@ def construct_class_map(classes: Union[ClassMap,
     elif type(classes) is list:
         item_list = []
         if not len(classes) == 0:
-            if type(classes[0]) is TaskConfig.ClassItem:
+            if type(classes[0]) is ClassItemMsg:
                 for item in classes:
                     item_list.append(ClassItem(item.id, item.name, item.color))
             elif type(classes[0]) is str:
@@ -58,7 +58,7 @@ def construct_class_map(classes: Union[ClassMap,
 
 def classes_to_class_items(class_map):
     """Transform a ClassMap into
-       a list of TaskConfig.ClassItem protobuf messages
+       a list of ClassItem protobuf messages
     """
-    return [TaskConfig.ClassItem(name=item.name, id=item.id, color=item.color)
+    return [ClassItemMsg(name=item.name, id=item.id, color=item.color)
             for item in class_map.get_items()]

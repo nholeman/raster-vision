@@ -14,8 +14,14 @@ class AnalyzerConfig(Config):
         pass
 
     @staticmethod
+    def to_builder(self):
+        return rv._registry.get_config_builder(rv.ANALYZER,
+                                               self.analyzer_type)(self)
+
+    @staticmethod
     def builder(analyzer_type):
-        return rv._registry.get_config_builder(rv.ANALYZER, analyzer_type)()
+        return rv._registry.get_config_builder(rv.ANALYZER,
+                                               analyzer_type)()
 
     @staticmethod
     def from_proto(msg):

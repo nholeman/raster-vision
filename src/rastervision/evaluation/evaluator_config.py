@@ -1,5 +1,6 @@
 from abc import abstractmethod
 
+import rastervision as rv
 from rastervision.core import (Config, ConfigBuilder)
 
 class EvaluatorConfig:
@@ -11,9 +12,14 @@ class EvaluatorConfig:
         """Create the Evaluator that this configuration represents"""
         pass
 
+    def to_builder(self):
+        return rv._registry.get_config_builder(rv.EVALUATOR,
+                                               self.evaluator_type)(self)
+
     @staticmethod
     def builder(evaluator_type):
-        return rv._registry.get_config_builder(rv.EVALUATOR, evaluator_type)()
+        return rv._registry.get_config_builder(rv.EVALUATOR,
+                                               evaluator_type)()
 
     @staticmethod
     def from_proto(msg):
@@ -22,13 +28,6 @@ class EvaluatorConfig:
         return rv._registry.get_config_builder(rv.EVALUATOR, msg.evaluator_type)() \
                            .from_proto(msg) \
                            .build()
-
-    def preprocess_command(self,
-                           command_type,
-                           experiment_config,
-                           context=[]):
-        # Generally evaluators do not have an affect on the IO.
-        return (self, rv.core.CommandIODefinition())
 
 class EvaluatorConfigBuilder(ConfigBuilder):
     pass

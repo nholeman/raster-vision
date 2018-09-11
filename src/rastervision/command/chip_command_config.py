@@ -5,18 +5,20 @@ from rastervision.command import (ChipCommand,
                                   CommandConfig,
                                   CommandConfigBuilder,
                                   NoOpCommand)
-from rastervision.protos.chip_command_pb2 \
-    import ChipCommandConfig as ChipCommandConfigMsg
+from rastervision.protos.command_pb2 \
+    import CommandConfig as CommandConfigMsg
 
 class ChipCommandConfig(CommandConfig):
     def __init__(self,
                  task,
                  backend,
+                 augmentors,
                  train_scenes,
                  val_scenes):
-        super.__init__(rv.CHIP)
+        super().__init__(rv.CHIP)
         self.task = task
         self.backend = backend
+        self.augmentors = augmentors
         self.train_scenes = train_scenes
         self.val_scenes = val_scenes
 
@@ -25,14 +27,17 @@ class ChipCommandConfig(CommandConfig):
             return NoOpCommand()
 
         backend = self.backend.create_backend(self.task)
-        task = self.task.create_tasks(backend)
+        task = self.task.create_task(backend)
+
+        augmentors = list(map(lambda a: a.create_augmentor(),
+                              self.augmentors))
 
         train_scenes = list(map(lambda s: s.create_scene(self.task, tmp_dir),
                                 self.train_scenes))
         val_scenes = list(map(lambda s: s.create_scene(self.task, tmp_dir),
                               self.val_scenes))
 
-        return ChipCommand(task, train_scenes, val_scenes)
+        return ChipCommand(task, augmentors, train_scenes, val_scenes)
 
     def to_proto(self):
         msg = super().to_proto()
@@ -58,6 +63,7 @@ class ChipCommandConfigBuilder(CommandConfigBuilder):
     def __init__(self):
         self.task = None
         self.backend = None
+        self.augmentors = []
         self.train_scenes = []
         self.val_scenes = []
 
@@ -68,9 +74,11 @@ class ChipCommandConfigBuilder(CommandConfigBuilder):
         if self.backend is None:
             raise rv.ConfigError("Backend not set. Use with_backend or with_experiment")
 
-        return ChipCommandConfig(self.train_scenes,
-                                 self.val_scenes,
-                                 self.task)
+        return ChipCommandConfig(self.task,
+                                 self.backend,
+                                 self.augmentors,
+                                 self.train_scenes,
+                                 self.val_scenes)
 
 
     def from_proto(self, msg):
@@ -78,6 +86,8 @@ class ChipCommandConfigBuilder(CommandConfigBuilder):
 
         task = rv.TaskConfig.from_proto(msg.task)
         backend = rv.BackendConfig.from_proto(msg.backend)
+        augmentors = list(map(rv.AugmentorConfig.from_proto,
+                              msg.augmentors))
         train_scenes = list(map(rv.SceneConfig.from_proto,
                                 msg.train_scenes))
         val_scenes = list(map(rv.SceneConfig.from_proto,
@@ -85,6 +95,7 @@ class ChipCommandConfigBuilder(CommandConfigBuilder):
 
         b = self.with_task(task)
         b = b.with_backend(backend)
+        b = b.with_augmentors(augmentors)
         b = b.with_train_scenes(train_scenes)
         b = b.with_val_sceness(val_scenes)
 
@@ -92,27 +103,33 @@ class ChipCommandConfigBuilder(CommandConfigBuilder):
 
     def with_experiment(self, experiment_config):
         b = self.with_task(experiment_config.task)
+        b = b.with_backend(experiment_config.backend)
+        b = b.with_augmentors(experiment_config.dataset.augmentors)
         b = b.with_train_scenes(experiment_config.dataset.train_scenes)
-        b = b.with_val_scenes(experiment_config.dataset.val_scenes)
+        b = b.with_val_scenes(experiment_config.dataset.validation_scenes)
         return  b
 
     def with_task(self, task):
-        b = deepcopy(b)
+        b = deepcopy(self)
         b.task = task
         return b
 
     def with_backend(self, backend):
-        b = deepcopy(b)
+        b = deepcopy(self)
         b.backend = backend
         return b
 
+    def with_augmentors(self, augmentors):
+        b = deepcopy(self)
+        b.augmentors = augmentors
+        return b
 
     def with_train_scenes(self, scenes):
-        b = deepcopy(b)
+        b = deepcopy(self)
         b.train_scenes = scenes
         return b
 
     def with_val_scenes(self, scenes):
-        b = deepcopy(b)
+        b = deepcopy(self)
         b.val_scenes = scenes
         return b
